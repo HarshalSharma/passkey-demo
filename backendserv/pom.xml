@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.harshalsharma.passkeydemo</groupId>
+        <artifactId>passkey-demo</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../</relativePath>
+    </parent>
+
+    <artifactId>backendserv</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>backend</name>
+    <description>backend</description>
+
+    <properties>
+        <start-class>com.harshalsharma.passkeydemo.backendserv.BackendApplication</start-class>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.harshalsharma.passkeydemo</groupId>
+            <artifactId>apispec</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jersey</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.harshalsharma</groupId>
+            <artifactId>webauthn-commons</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <!--		<dependency>-->
+        <!--			<groupId>com.h2database</groupId>-->
+        <!--			<artifactId>h2</artifactId>-->
+        <!--			<scope>runtime</scope>-->
+        <!--		</dependency>-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <scope>provided</scope>
+            <version>1.5.3</version>
+        </dependency>
+        <!-- @Nullable annotation -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+    </dependencies>
+
+    <!--    <dependencies>-->
+    <!--        <dependency>-->
+    <!--            <groupId>jakarta.ws.rs</groupId>-->
+    <!--            <artifactId>jakarta.ws.rs-api</artifactId>-->
+    <!--            <version>${jakarta.ws.rs-version}</version>-->
+    <!--            <scope>provided</scope>-->
+    <!--        </dependency>-->
+    <!--        <dependency>-->
+    <!--            <groupId>com.fasterxml.jackson.datatype</groupId>-->
+    <!--            <artifactId>jackson-datatype-jsr310</artifactId>-->
+    <!--            <version>${jackson-version}</version>-->
+    <!--        </dependency>-->
+    <!--        <dependency>-->
+    <!--            <groupId>com.fasterxml.jackson.jakarta.rs</groupId>-->
+    <!--            <artifactId>jackson-jakarta-rs-json-provider</artifactId>-->
+    <!--            <version>${jackson-version}</version>-->
+    <!--        </dependency>-->
+    <!--        <dependency>-->
+    <!--            <groupId>joda-time</groupId>-->
+    <!--            <artifactId>joda-time</artifactId>-->
+    <!--            <version>${joda-version}</version>-->
+    <!--        </dependency>-->
+    <!--        <dependency>-->
+    <!--            <groupId>jakarta.annotation</groupId>-->
+    <!--            <artifactId>jakarta.annotation-api</artifactId>-->
+    <!--            <version>${javax.annotation-api-version}</version>-->
+    <!--        </dependency>-->
+    <!--        <dependency>-->
+    <!--            <groupId>junit</groupId>-->
+    <!--            <artifactId>junit</artifactId>-->
+    <!--            <version>${junit-version}</version>-->
+    <!--            <scope>test</scope>-->
+    <!--        </dependency>-->
+    <!--        &lt;!&ndash; Bean Validation API support &ndash;&gt;-->
+    <!--        <dependency>-->
+    <!--            <groupId>jakarta.validation</groupId>-->
+    <!--            <artifactId>jakarta.validation-api</artifactId>-->
+    <!--            <version>${beanvalidation-version}</version>-->
+    <!--            <scope>provided</scope>-->
+    <!--        </dependency>-->
+    <!--    </dependencies>-->
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
