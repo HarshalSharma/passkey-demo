@@ -5,14 +5,15 @@ import com.harshalsharma.passkeydemo.apispec.api.RegistrationApi;
 import com.harshalsharma.passkeydemo.apispec.model.*;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
+import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
 import jakarta.inject.Inject;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateUUIDString;
 
 @Component
 public class WebAuthnController implements RegistrationApi, AuthenticationApi {
@@ -47,14 +48,10 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
         return creationOptionsResponse;
     }
 
-    @NotNull
-    private static synchronized String generateUUIDString() {
-        return UUID.randomUUID().toString();
-    }
-
     @Override
     public void registrationPost(RegistrationRequest registrationRequest) {
-        throw new NullPointerException();
+
+        throw new InvalidRequestException("Invalid Attestation Object");
     }
 
     @Override

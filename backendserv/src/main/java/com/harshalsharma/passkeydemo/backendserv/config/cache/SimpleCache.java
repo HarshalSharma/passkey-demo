@@ -1,4 +1,4 @@
-package com.harshalsharma.passkeydemo.backendserv.config;
+package com.harshalsharma.passkeydemo.backendserv.config.cache;
 
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
 import org.springframework.stereotype.Component;

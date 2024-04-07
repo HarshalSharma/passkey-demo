@@ -1,4 +1,4 @@
-package com.harshalsharma.passkeydemo.backendserv.config;
+package com.harshalsharma.passkeydemo.backendserv.config.filters;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;

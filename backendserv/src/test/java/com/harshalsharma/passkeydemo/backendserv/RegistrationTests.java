@@ -1,10 +1,14 @@
 package com.harshalsharma.passkeydemo.backendserv;
 
 import com.harshalsharma.passkeydemo.apispec.api.RegistrationApi;
+import com.harshalsharma.passkeydemo.apispec.model.Error;
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialCreationOptionsResponse;
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialParam;
+import com.harshalsharma.passkeydemo.apispec.model.RegistrationRequest;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
+import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,8 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @TestPropertySource(locations = "classpath:application.properties")
@@ -104,7 +107,55 @@ public class RegistrationTests {
             assertEquals(userId, userName, "By default username is same as userid");
             assertEquals(defaultDisplayName, displayName, "display name has the default value.");
         }
+    }
 
+    @Nested
+    @DisplayName("Registration POST Tests")
+    class RegistrationPostTests {
+
+        @Test
+        @DisplayName("On post, if attestation object is unreadable, then it is invalid request")
+        void testAttestationObjectIsNotInvalid() {
+            //given
+            String attestationObject = RandomStringUtils.randomAlphabetic(20);
+
+            try {
+                //when
+                RegistrationRequest request = new RegistrationRequest();
+                request.setAttestationObject(attestationObject);
+                registrationApi.registrationPost(request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Object entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                Error error = (Error) entity;
+                assertEquals("Invalid Attestation Object", error.getDescription());
+            }
+        }
+
+//        @Test
+//        @DisplayName("On post, if attestation object is valid, then public key must be stored to db.")
+//        void testAttestationObjectIsReadable() {
+//            //given
+//            String attestationObject =
+//
+//            try {
+//                //when
+//                RegistrationRequest request = new RegistrationRequest();
+//                request.setAttestationObject(attestationObject);
+//                registrationApi.registrationPost(request);
+//                fail("exception expected above");
+//            } catch (InvalidRequestException e) {
+//                //then
+//                assertEquals(400, e.getStatus());
+//                Object entity = e.getError();
+//                assertInstanceOf(Error.class, entity);
+//                Error error = (Error) entity;
+//                assertEquals("Invalid Attestation Object", error.getDescription());
+//            }
+//        }
 
     }
 

@@ -1,4 +1,4 @@
-package com.harshalsharma.passkeydemo.backendserv.config;
+package com.harshalsharma.passkeydemo.backendserv.config.props;
 
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
 import lombok.Data;

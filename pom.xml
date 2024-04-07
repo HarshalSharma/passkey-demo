@@ -17,6 +17,7 @@
 
     <modules>
         <module>apispec</module>
+        <module>webauthn-commons</module>
         <module>backendserv</module>
     </modules>
 
