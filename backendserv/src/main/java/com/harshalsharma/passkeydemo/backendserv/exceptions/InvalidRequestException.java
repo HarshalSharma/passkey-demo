@@ -13,6 +13,11 @@ public class InvalidRequestException extends RuntimeException implements Busines
         this.description = description;
     }
 
+    public InvalidRequestException(String description, Throwable throwable) {
+        super(throwable);
+        this.description = description;
+    }
+
     @Override
     public Error getError() {
         Error error = new Error();

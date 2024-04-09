@@ -6,9 +6,15 @@ import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialCreationOp
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialParam;
 import com.harshalsharma.passkeydemo.apispec.model.RegistrationRequest;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
+import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
+import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Credential;
 import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
+import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectExplorer;
+import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectReader;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,7 +31,8 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@TestPropertySource(locations = "classpath:application.properties")
+@TestPropertySource(locations = "classpath:application.properties",
+        properties = "spring.datasource.url=jdbc:h2:mem:testdb")
 public class RegistrationTests {
 
     @Autowired
@@ -36,6 +43,9 @@ public class RegistrationTests {
 
     @Autowired
     private CacheService cacheService;
+
+    @Autowired
+    private WebauthnDataService webauthnDataService;
 
     @Nested
     @DisplayName("Credential Creation Options Tests")
@@ -114,6 +124,26 @@ public class RegistrationTests {
     class RegistrationPostTests {
 
         @Test
+        @DisplayName("When UserHandle is absent, then it is invalid request")
+        void testAbsentUserHandleIsInvalidRequest() {
+            //given
+            RegistrationRequest request = new RegistrationRequest();
+
+            try {
+                //when
+                registrationApi.registrationPost(request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Object entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                Error error = (Error) entity;
+                assertEquals("Invalid UserHandle.", error.getDescription());
+            }
+        }
+
+        @Test
         @DisplayName("On post, if attestation object is unreadable, then it is invalid request")
         void testAttestationObjectIsNotInvalid() {
             //given
@@ -122,6 +152,7 @@ public class RegistrationTests {
             try {
                 //when
                 RegistrationRequest request = new RegistrationRequest();
+                request.setUserHandle(RandomStringUtils.randomAlphanumeric(10));
                 request.setAttestationObject(attestationObject);
                 registrationApi.registrationPost(request);
                 fail("exception expected above");
@@ -135,28 +166,102 @@ public class RegistrationTests {
             }
         }
 
-//        @Test
-//        @DisplayName("On post, if attestation object is valid, then public key must be stored to db.")
-//        void testAttestationObjectIsReadable() {
-//            //given
-//            String attestationObject =
-//
-//            try {
-//                //when
-//                RegistrationRequest request = new RegistrationRequest();
-//                request.setAttestationObject(attestationObject);
-//                registrationApi.registrationPost(request);
-//                fail("exception expected above");
-//            } catch (InvalidRequestException e) {
-//                //then
-//                assertEquals(400, e.getStatus());
-//                Object entity = e.getError();
-//                assertInstanceOf(Error.class, entity);
-//                Error error = (Error) entity;
-//                assertEquals("Invalid Attestation Object", error.getDescription());
-//            }
-//        }
+        @Test
+        @DisplayName("When clientDataJson is absent, then it is invalid request")
+        void testClientDataJsonIsPresent() {
+            //given
+            String attestationObject = getValidAttestationObjectString();
 
+            try {
+                //when
+                RegistrationRequest request = new RegistrationRequest();
+                request.setUserHandle(RandomStringUtils.randomAlphanumeric(10));
+                request.setAttestationObject(attestationObject);
+                registrationApi.registrationPost(request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Object entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                Error error = (Error) entity;
+                assertEquals("Invalid ClientDataJson", error.getDescription());
+            }
+        }
+
+        @Test
+        @DisplayName("When clientDataJson is present and challenge is missing in cache, then it is invalid request")
+        void testClientDataJsonChallengeIsInvalid() {
+            //given
+            String challenge = RandomStringUtils.randomAlphanumeric(10);
+            String attestationObject = getValidAttestationObjectString();
+            String clientDataJson = "{ \"challenge\":\"" + challenge + "\"}";
+            clientDataJson = Base64.encodeBase64String(clientDataJson.getBytes());
+
+            try {
+                //when
+                RegistrationRequest request = new RegistrationRequest();
+                request.setUserHandle(RandomStringUtils.randomAlphanumeric(10));
+                request.setAttestationObject(attestationObject);
+                request.setClientDataJson(clientDataJson);
+                registrationApi.registrationPost(request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Object entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                Error error = (Error) entity;
+                assertEquals("Invalid ClientDataJson", error.getDescription());
+            }
+        }
+
+        @Test
+        @DisplayName("On post, if attestation object is valid, then public key must be stored to db.")
+        void testAttestationObjectIsReadable() {
+            //given
+            PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
+            String attestationObject = getValidAttestationObjectString();
+            AttestationObjectExplorer objectExplorer = AttestationObjectReader.read(attestationObject.trim());
+            String publicKey = objectExplorer.getEncodedPublicKeySpec();
+            String publicKeyType = objectExplorer.getKeyType();
+            String credentialId = objectExplorer.getWebauthnId();
+
+            //when
+            RegistrationRequest request = new RegistrationRequest();
+            request.setAttestationObject(attestationObject.trim());
+            request.setClientDataJson(createClientDataJson(creationOptionsResponse));
+            request.setUserHandle(creationOptionsResponse.getUserId());
+            registrationApi.registrationPost(request);
+            request.setUserHandle(creationOptionsResponse.getUserId());
+            request.setClientDataJson(createClientDataJson(creationOptionsResponse));
+
+            //then
+            Optional<Credential> optionalCredential = webauthnDataService.findById(credentialId);
+            assertTrue(optionalCredential.isPresent(), "Credential must be saved to the database.");
+            Credential credential = optionalCredential.get();
+            assertEquals(publicKey, credential.getPublicKey(), "Credential's public key must match.");
+            assertEquals(publicKeyType, credential.getPublicKeyType(), "Credential's public key type must match.");
+            assertEquals(credentialId, credential.getCredentialId(), "Credential's credential id must match.");
+        }
+
+
+    }
+
+    @NotNull
+    private static String getValidAttestationObjectString() {
+        return """
+                o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVikt8DGRTBfls-BhOH2QC404lvdhe_t2_NkvM0n
+                QWEEADdFAAAAAK3OAAI1vMYKZIsLJfHwVQMAIG3U68BVLKmmjpNF5gfsJf9w4gbLeAAuoOUO92iCL8yMpQECAyYgASFYIB6
+                TbnDZAtONzEw2l_fgafcbO9LbMve1DfVrRMu3TKl7Ilgg-wT1ncos7Hh-kHfiFxuuvENQt3RUc7evD4FewvEIrNg
+                """;
+    }
+
+    private String createClientDataJson(PublicKeyCredentialCreationOptionsResponse creationOptionsResponse) {
+        String challenge = creationOptionsResponse.getChallenge();
+        String origin = creationOptionsResponse.getRpId();
+        String clientDataJson = "{ \"challenge\":\"" + challenge + "\", \"origin\":\"" + origin + "\"}";
+        return Base64.encodeBase64String(clientDataJson.getBytes());
     }
 
 }
