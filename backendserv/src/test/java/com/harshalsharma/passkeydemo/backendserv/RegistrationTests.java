@@ -6,6 +6,7 @@ import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialCreationOp
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialParam;
 import com.harshalsharma.passkeydemo.apispec.model.RegistrationRequest;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
+import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.ErrorDescriptions;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Credential;
@@ -35,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
         properties = "spring.datasource.url=jdbc:h2:mem:testdb")
 public class RegistrationTests {
 
+    public static final String WEBAUTHN_CREATE_TYPE = "webauthn.create";
     @Autowired
     private RegistrationApi registrationApi;
 
@@ -136,10 +138,9 @@ public class RegistrationTests {
             } catch (InvalidRequestException e) {
                 //then
                 assertEquals(400, e.getStatus());
-                Object entity = e.getError();
+                Error entity = e.getError();
                 assertInstanceOf(Error.class, entity);
-                Error error = (Error) entity;
-                assertEquals("Invalid UserHandle.", error.getDescription());
+                assertEquals(ErrorDescriptions.INVALID_USER_HANDLE, entity.getDescription());
             }
         }
 
@@ -159,10 +160,9 @@ public class RegistrationTests {
             } catch (InvalidRequestException e) {
                 //then
                 assertEquals(400, e.getStatus());
-                Object entity = e.getError();
+                Error entity = e.getError();
                 assertInstanceOf(Error.class, entity);
-                Error error = (Error) entity;
-                assertEquals("Invalid Attestation Object", error.getDescription());
+                assertEquals(ErrorDescriptions.INVALID_ATTESTATION_OBJECT, entity.getDescription());
             }
         }
 
@@ -182,10 +182,57 @@ public class RegistrationTests {
             } catch (InvalidRequestException e) {
                 //then
                 assertEquals(400, e.getStatus());
-                Object entity = e.getError();
+                Error entity = e.getError();
                 assertInstanceOf(Error.class, entity);
-                Error error = (Error) entity;
-                assertEquals("Invalid ClientDataJson", error.getDescription());
+                assertEquals(ErrorDescriptions.INVALID_VALUE_FOR_CLIENT_DATA_JSON, entity.getDescription());
+            }
+        }
+
+        @Test
+        @DisplayName("When clientDataJson type is not webauthn.create, then it is invalid request")
+        void testClientDataJsonTypeIsCreate() {
+            //given
+            String attestationObject = getValidAttestationObjectString();
+            String clientDataJson = createClientDataJson("1234", createValidOrigin(),
+                    RandomStringUtils.randomAlphanumeric(5));
+            try {
+                //when
+                RegistrationRequest request = new RegistrationRequest();
+                request.setUserHandle(RandomStringUtils.randomAlphanumeric(10));
+                request.setAttestationObject(attestationObject);
+                request.setClientDataJson(clientDataJson);
+                registrationApi.registrationPost(request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Error entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                assertEquals(ErrorDescriptions.INVALID_CDJ_TYPE, entity.getDescription());
+            }
+        }
+
+        @Test
+        @DisplayName("When clientDataJson origin is not valid, then it is invalid request")
+        void testClientDataJsonOriginIsInvalid() {
+            //given
+            String attestationObject = getValidAttestationObjectString();
+            String clientDataJson = createClientDataJson("1234", RandomStringUtils.randomAlphanumeric(5),
+                    WEBAUTHN_CREATE_TYPE);
+            try {
+                //when
+                RegistrationRequest request = new RegistrationRequest();
+                request.setUserHandle(RandomStringUtils.randomAlphanumeric(10));
+                request.setAttestationObject(attestationObject);
+                request.setClientDataJson(clientDataJson);
+                registrationApi.registrationPost(request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Error entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                assertEquals(ErrorDescriptions.INVALID_ORIGIN, entity.getDescription());
             }
         }
 
@@ -195,8 +242,7 @@ public class RegistrationTests {
             //given
             String challenge = RandomStringUtils.randomAlphanumeric(10);
             String attestationObject = getValidAttestationObjectString();
-            String clientDataJson = "{ \"challenge\":\"" + challenge + "\"}";
-            clientDataJson = Base64.encodeBase64String(clientDataJson.getBytes());
+            String clientDataJson = createClientDataJson(challenge, createValidOrigin(), WEBAUTHN_CREATE_TYPE);
 
             try {
                 //when
@@ -209,15 +255,14 @@ public class RegistrationTests {
             } catch (InvalidRequestException e) {
                 //then
                 assertEquals(400, e.getStatus());
-                Object entity = e.getError();
+                Error entity = e.getError();
                 assertInstanceOf(Error.class, entity);
-                Error error = (Error) entity;
-                assertEquals("Invalid ClientDataJson", error.getDescription());
+                assertEquals(ErrorDescriptions.INVALID_CHALLENGE, entity.getDescription());
             }
         }
 
         @Test
-        @DisplayName("On post, if attestation object is valid, then public key must be stored to db.")
+        @DisplayName("On post, if attestation object and client-data-json is valid, then public key must be stored to db.")
         void testAttestationObjectIsReadable() {
             //given
             PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
@@ -233,8 +278,6 @@ public class RegistrationTests {
             request.setClientDataJson(createClientDataJson(creationOptionsResponse));
             request.setUserHandle(creationOptionsResponse.getUserId());
             registrationApi.registrationPost(request);
-            request.setUserHandle(creationOptionsResponse.getUserId());
-            request.setClientDataJson(createClientDataJson(creationOptionsResponse));
 
             //then
             Optional<Credential> optionalCredential = webauthnDataService.findById(credentialId);
@@ -249,6 +292,11 @@ public class RegistrationTests {
     }
 
     @NotNull
+    private String createValidOrigin() {
+        return "https://" + webauthnProperties.getRpId();
+    }
+
+    @NotNull
     private static String getValidAttestationObjectString() {
         return """
                 o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVikt8DGRTBfls-BhOH2QC404lvdhe_t2_NkvM0n
@@ -259,8 +307,13 @@ public class RegistrationTests {
 
     private String createClientDataJson(PublicKeyCredentialCreationOptionsResponse creationOptionsResponse) {
         String challenge = creationOptionsResponse.getChallenge();
-        String origin = creationOptionsResponse.getRpId();
-        String clientDataJson = "{ \"challenge\":\"" + challenge + "\", \"origin\":\"" + origin + "\"}";
+        String origin = createValidOrigin();
+        return createClientDataJson(challenge, origin, WEBAUTHN_CREATE_TYPE);
+    }
+
+    private static String createClientDataJson(String challenge, String origin, String type) {
+        String clientDataJson = "{ \"challenge\":\"" + challenge + "\", \"origin\":\"" + origin + "\", " +
+                "\"type\": \"" + type + "\"}";
         return Base64.encodeBase64String(clientDataJson.getBytes());
     }
 

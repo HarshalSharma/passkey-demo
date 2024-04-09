@@ -6,6 +6,7 @@ import com.harshalsharma.passkeydemo.apispec.api.AuthenticationApi;
 import com.harshalsharma.passkeydemo.apispec.api.RegistrationApi;
 import com.harshalsharma.passkeydemo.apispec.model.*;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
+import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.ErrorDescriptions;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Credential;
@@ -66,28 +67,18 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
     @Override
     public void registrationPost(RegistrationRequest registrationRequest) {
         if (StringUtils.isBlank(registrationRequest.getUserHandle())) {
-            throw new InvalidRequestException("Invalid UserHandle.");
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_USER_HANDLE);
         }
         try {
             String attestationObject = registrationRequest.getAttestationObject();
             AttestationObjectExplorer objectExplorer = AttestationObjectReader.read(attestationObject);
-            String clientDataJson = registrationRequest.getClientDataJson();
-            if (StringUtils.isBlank(clientDataJson)) {
-                throw new InvalidRequestException("Invalid ClientDataJson");
-            }
-            String decodedClientDataJson = new String(Base64.decodeBase64(clientDataJson));
-            ClientDataJson clientDataJsonObject;
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                clientDataJsonObject = mapper.readValue(decodedClientDataJson, ClientDataJson.class);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
+            ClientDataJson clientDataJson = readClientDataJson(registrationRequest);
+            validateClientDataJson(clientDataJson);
             Optional<String> cacheChallenge = cacheService.get(registrationRequest.getUserHandle() + "_challenge");
-            if (cacheChallenge.isPresent() && StringUtils.equals(cacheChallenge.get(), clientDataJsonObject.getChallenge())) {
+            if (cacheChallenge.isPresent() && StringUtils.equals(cacheChallenge.get(), clientDataJson.getChallenge())) {
                 //
             } else {
-                throw new InvalidRequestException("Invalid ClientDataJson");
+                throw new InvalidRequestException(ErrorDescriptions.INVALID_CHALLENGE);
             }
             webauthnDataService.save(Credential.builder()
                     .credentialId(objectExplorer.getWebauthnId())
@@ -95,8 +86,37 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
                     .publicKeyType(objectExplorer.getKeyType())
                     .build());
         } catch (InvalidAttestationObjException ex) {
-            throw new InvalidRequestException("Invalid Attestation Object", ex);
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_ATTESTATION_OBJECT, ex);
         }
+    }
+
+    private void validateClientDataJson(ClientDataJson clientDataJson) {
+        if(!StringUtils.equals(clientDataJson.getOrigin(), "https://" + webAuthnProperties.getRpId())) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_ORIGIN);
+        }
+        if(!StringUtils.equals(clientDataJson.getType(), "webauthn.create")) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_CDJ_TYPE);
+        }
+    }
+
+    private static ClientDataJson readClientDataJson(RegistrationRequest registrationRequest) {
+        ClientDataJson clientDataJsonObject;
+        String clientDataJson = registrationRequest.getClientDataJson();
+        if (StringUtils.isBlank(clientDataJson)) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_VALUE_FOR_CLIENT_DATA_JSON);
+        }
+        try {
+            String decodedClientDataJson = new String(Base64.decodeBase64(clientDataJson));
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                clientDataJsonObject = mapper.readValue(decodedClientDataJson, ClientDataJson.class);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (Exception e) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_VALUE_FOR_CLIENT_DATA_JSON);
+        }
+        return clientDataJsonObject;
     }
 
     @Override
