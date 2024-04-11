@@ -9,4 +9,5 @@ public class ErrorDescriptions {
     public static final String INVALID_ORIGIN = "Invalid Origin.";
 
     public static final String INVALID_CDJ_TYPE = "Invalid Operation Type.";
+    public static final String NO_CREDENTIALS_FOUND = "Not Registered.";
 }

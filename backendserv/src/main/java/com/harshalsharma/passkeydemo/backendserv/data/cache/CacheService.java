@@ -10,4 +10,6 @@ public interface CacheService {
     Optional<String> get(String key);
 
     Optional<byte[]> getBytes(String key);
+
+    void remove(String cacheKey);
 }

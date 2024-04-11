@@ -262,7 +262,7 @@ public class RegistrationTests {
         }
 
         @Test
-        @DisplayName("On post, if attestation object and client-data-json is valid, then public key must be stored to db.")
+        @DisplayName("On post, if attestation object and client-data-json is valid, then credential must be stored to db.")
         void testAttestationObjectIsReadable() {
             //given
             PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
@@ -286,6 +286,8 @@ public class RegistrationTests {
             assertEquals(publicKey, credential.getPublicKey(), "Credential's public key must match.");
             assertEquals(publicKeyType, credential.getPublicKeyType(), "Credential's public key type must match.");
             assertEquals(credentialId, credential.getCredentialId(), "Credential's credential id must match.");
+            assertEquals(creationOptionsResponse.getUserId(), credential.getUserId(), "user handle must match.");
+
         }
 
 

@@ -10,4 +10,5 @@ public interface WebauthnProperties {
 
     List<Integer> getSupportedPublicKeyAlgs();
 
+    int getTokenTimeoutInMillis();
 }

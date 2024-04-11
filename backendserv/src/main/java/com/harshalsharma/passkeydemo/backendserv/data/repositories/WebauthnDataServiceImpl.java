@@ -5,6 +5,7 @@ import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Creden
 import jakarta.inject.Inject;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -20,6 +21,11 @@ public class WebauthnDataServiceImpl implements WebauthnDataService {
     @Override
     public Optional<Credential> findById(String credentialId) {
         return webAuthnRepository.findById(credentialId);
+    }
+
+    @Override
+    public List<Credential> findByUserId(String userId) {
+        return webAuthnRepository.findByUserId(userId);
     }
 
     @Override

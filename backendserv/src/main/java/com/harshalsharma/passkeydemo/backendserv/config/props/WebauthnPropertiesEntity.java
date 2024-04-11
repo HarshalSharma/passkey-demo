@@ -18,4 +18,6 @@ public class WebauthnPropertiesEntity implements WebauthnProperties {
 
     private List<Integer> supportedPublicKeyAlgs;
 
+    private int tokenTimeoutInMillis;
+
 }

@@ -1,8 +1,7 @@
-package com.harshalsharma.passkeydemo.backendserv.controllers;
+package com.harshalsharma.passkeydemo.backendserv.domain.webauthn.registration;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.harshalsharma.passkeydemo.apispec.api.AuthenticationApi;
 import com.harshalsharma.passkeydemo.apispec.api.RegistrationApi;
 import com.harshalsharma.passkeydemo.apispec.model.*;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateUUIDString;
 
 @Component
-public class WebAuthnController implements RegistrationApi, AuthenticationApi {
+public class WebAuthnRegistrationService implements RegistrationApi {
 
     private final WebauthnProperties webAuthnProperties;
 
@@ -37,8 +36,8 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
     private final WebauthnDataService webauthnDataService;
 
     @Inject
-    public WebAuthnController(WebauthnProperties webAuthnProperties, CacheService cacheService,
-                              WebauthnDataService webauthnDataService) {
+    public WebAuthnRegistrationService(WebauthnProperties webAuthnProperties, CacheService cacheService,
+                                       WebauthnDataService webauthnDataService) {
         this.webAuthnProperties = webAuthnProperties;
         this.cacheService = cacheService;
         this.webauthnDataService = webauthnDataService;
@@ -66,7 +65,8 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
 
     @Override
     public void registrationPost(RegistrationRequest registrationRequest) {
-        if (StringUtils.isBlank(registrationRequest.getUserHandle())) {
+        String userHandle = registrationRequest.getUserHandle();
+        if (StringUtils.isBlank(userHandle)) {
             throw new InvalidRequestException(ErrorDescriptions.INVALID_USER_HANDLE);
         }
         try {
@@ -74,27 +74,28 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
             AttestationObjectExplorer objectExplorer = AttestationObjectReader.read(attestationObject);
             ClientDataJson clientDataJson = readClientDataJson(registrationRequest);
             validateClientDataJson(clientDataJson);
-            Optional<String> cacheChallenge = cacheService.get(registrationRequest.getUserHandle() + "_challenge");
+            String cacheKey = userHandle + "_challenge";
+            Optional<String> cacheChallenge = cacheService.get(cacheKey);
             if (cacheChallenge.isPresent() && StringUtils.equals(cacheChallenge.get(), clientDataJson.getChallenge())) {
-                //
+                webauthnDataService.save(Credential.builder()
+                        .credentialId(objectExplorer.getWebauthnId())
+                        .publicKey(objectExplorer.getEncodedPublicKeySpec())
+                        .publicKeyType(objectExplorer.getKeyType())
+                        .userId(userHandle)
+                        .build());
             } else {
                 throw new InvalidRequestException(ErrorDescriptions.INVALID_CHALLENGE);
             }
-            webauthnDataService.save(Credential.builder()
-                    .credentialId(objectExplorer.getWebauthnId())
-                    .publicKey(objectExplorer.getEncodedPublicKeySpec())
-                    .publicKeyType(objectExplorer.getKeyType())
-                    .build());
         } catch (InvalidAttestationObjException ex) {
             throw new InvalidRequestException(ErrorDescriptions.INVALID_ATTESTATION_OBJECT, ex);
         }
     }
 
     private void validateClientDataJson(ClientDataJson clientDataJson) {
-        if(!StringUtils.equals(clientDataJson.getOrigin(), "https://" + webAuthnProperties.getRpId())) {
+        if (!StringUtils.equals(clientDataJson.getOrigin(), "https://" + webAuthnProperties.getRpId())) {
             throw new InvalidRequestException(ErrorDescriptions.INVALID_ORIGIN);
         }
-        if(!StringUtils.equals(clientDataJson.getType(), "webauthn.create")) {
+        if (!StringUtils.equals(clientDataJson.getType(), "webauthn.create")) {
             throw new InvalidRequestException(ErrorDescriptions.INVALID_CDJ_TYPE);
         }
     }
@@ -119,13 +120,4 @@ public class WebAuthnController implements RegistrationApi, AuthenticationApi {
         return clientDataJsonObject;
     }
 
-    @Override
-    public PublicKeyCredentialRequestOptionsResponse authenticationUserHandleGet(String userHandle) {
-        return null;
-    }
-
-    @Override
-    public SuccessfulAuthenticationResponse authenticationUserHandlePost(String userHandle, AuthenticationRequest authenticationRequest) {
-        return null;
-    }
 }
