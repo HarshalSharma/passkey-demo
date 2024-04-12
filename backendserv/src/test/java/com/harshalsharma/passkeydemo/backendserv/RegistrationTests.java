@@ -36,7 +36,6 @@ import static org.junit.jupiter.api.Assertions.*;
         properties = "spring.datasource.url=jdbc:h2:mem:testdb")
 public class RegistrationTests {
 
-    public static final String WEBAUTHN_CREATE_TYPE = "webauthn.create";
     @Autowired
     private RegistrationApi registrationApi;
 
@@ -170,7 +169,7 @@ public class RegistrationTests {
         @DisplayName("When clientDataJson is absent, then it is invalid request")
         void testClientDataJsonIsPresent() {
             //given
-            String attestationObject = getValidAttestationObjectString();
+            String attestationObject = CommonUtils.getValidAttestationObjectString();
 
             try {
                 //when
@@ -192,8 +191,9 @@ public class RegistrationTests {
         @DisplayName("When clientDataJson type is not webauthn.create, then it is invalid request")
         void testClientDataJsonTypeIsCreate() {
             //given
-            String attestationObject = getValidAttestationObjectString();
-            String clientDataJson = createClientDataJson("1234", createValidOrigin(),
+            String attestationObject = CommonUtils.getValidAttestationObjectString();
+            String clientDataJson = CommonUtils.createClientDataJson("1234",
+                    CommonUtils.createValidOrigin(webauthnProperties.getRpId()),
                     RandomStringUtils.randomAlphanumeric(5));
             try {
                 //when
@@ -216,9 +216,9 @@ public class RegistrationTests {
         @DisplayName("When clientDataJson origin is not valid, then it is invalid request")
         void testClientDataJsonOriginIsInvalid() {
             //given
-            String attestationObject = getValidAttestationObjectString();
-            String clientDataJson = createClientDataJson("1234", RandomStringUtils.randomAlphanumeric(5),
-                    WEBAUTHN_CREATE_TYPE);
+            String attestationObject = CommonUtils.getValidAttestationObjectString();
+            String clientDataJson = CommonUtils.createClientDataJson("1234", RandomStringUtils.randomAlphanumeric(5),
+                    CommonUtils.WEBAUTHN_CREATE_TYPE);
             try {
                 //when
                 RegistrationRequest request = new RegistrationRequest();
@@ -241,8 +241,10 @@ public class RegistrationTests {
         void testClientDataJsonChallengeIsInvalid() {
             //given
             String challenge = RandomStringUtils.randomAlphanumeric(10);
-            String attestationObject = getValidAttestationObjectString();
-            String clientDataJson = createClientDataJson(challenge, createValidOrigin(), WEBAUTHN_CREATE_TYPE);
+            String attestationObject = CommonUtils.getValidAttestationObjectString();
+            String clientDataJson = CommonUtils.createClientDataJson(challenge,
+                    CommonUtils.createValidOrigin(webauthnProperties.getRpId()),
+                    CommonUtils.WEBAUTHN_CREATE_TYPE);
 
             try {
                 //when
@@ -266,7 +268,7 @@ public class RegistrationTests {
         void testAttestationObjectIsReadable() {
             //given
             PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
-            String attestationObject = getValidAttestationObjectString();
+            String attestationObject = CommonUtils.getValidAttestationObjectString();
             AttestationObjectExplorer objectExplorer = AttestationObjectReader.read(attestationObject.trim());
             String publicKey = objectExplorer.getEncodedPublicKeySpec();
             String publicKeyType = objectExplorer.getKeyType();
@@ -275,7 +277,7 @@ public class RegistrationTests {
             //when
             RegistrationRequest request = new RegistrationRequest();
             request.setAttestationObject(attestationObject.trim());
-            request.setClientDataJson(createClientDataJson(creationOptionsResponse));
+            request.setClientDataJson(CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getRpId()));
             request.setUserHandle(creationOptionsResponse.getUserId());
             registrationApi.registrationPost(request);
 
@@ -291,32 +293,6 @@ public class RegistrationTests {
         }
 
 
-    }
-
-    @NotNull
-    private String createValidOrigin() {
-        return "https://" + webauthnProperties.getRpId();
-    }
-
-    @NotNull
-    private static String getValidAttestationObjectString() {
-        return """
-                o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVikt8DGRTBfls-BhOH2QC404lvdhe_t2_NkvM0n
-                QWEEADdFAAAAAK3OAAI1vMYKZIsLJfHwVQMAIG3U68BVLKmmjpNF5gfsJf9w4gbLeAAuoOUO92iCL8yMpQECAyYgASFYIB6
-                TbnDZAtONzEw2l_fgafcbO9LbMve1DfVrRMu3TKl7Ilgg-wT1ncos7Hh-kHfiFxuuvENQt3RUc7evD4FewvEIrNg
-                """;
-    }
-
-    private String createClientDataJson(PublicKeyCredentialCreationOptionsResponse creationOptionsResponse) {
-        String challenge = creationOptionsResponse.getChallenge();
-        String origin = createValidOrigin();
-        return createClientDataJson(challenge, origin, WEBAUTHN_CREATE_TYPE);
-    }
-
-    private static String createClientDataJson(String challenge, String origin, String type) {
-        String clientDataJson = "{ \"challenge\":\"" + challenge + "\", \"origin\":\"" + origin + "\", " +
-                "\"type\": \"" + type + "\"}";
-        return Base64.encodeBase64String(clientDataJson.getBytes());
     }
 
 }
