@@ -20,4 +20,5 @@ public class WebauthnPropertiesEntity implements WebauthnProperties {
 
     private int tokenTimeoutInMillis;
 
+    private String origin;
 }

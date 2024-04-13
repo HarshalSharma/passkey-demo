@@ -1,7 +1,5 @@
 package com.harshalsharma.passkeydemo.backendserv.domain.webauthn.authentication;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.harshalsharma.passkeydemo.apispec.api.AuthenticationApi;
 import com.harshalsharma.passkeydemo.apispec.model.AllowedCredential;
 import com.harshalsharma.passkeydemo.apispec.model.AuthenticationRequest;
@@ -15,13 +13,14 @@ import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Creden
 import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
 import com.harshalsharma.webauthncommons.attestationObject.parsers.AuthenticatorDataReader;
 import com.harshalsharma.webauthncommons.authentication.SignatureVerifier;
+import com.harshalsharma.webauthncommons.clientdatajson.ClientDataJsonReader;
+import com.harshalsharma.webauthncommons.clientdatajson.ClientDataJsonValidator;
 import com.harshalsharma.webauthncommons.entities.AuthenticatorAssertionResponse;
 import com.harshalsharma.webauthncommons.entities.AuthenticatorData;
 import com.harshalsharma.webauthncommons.entities.ClientDataJson;
 import com.harshalsharma.webauthncommons.publickey.PublicKeyCredential;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -43,6 +42,8 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
 
     private final TokenService tokenService;
 
+    private final ClientDataJsonValidator clientDataJsonValidator;
+
     @Inject
     public WebAuthnAuthenticationService(WebauthnProperties webAuthnProperties, CacheService cacheService,
                                          WebauthnDataService webauthnDataService, TokenService tokenService) {
@@ -50,6 +51,10 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
         this.cacheService = cacheService;
         this.webauthnDataService = webauthnDataService;
         this.tokenService = tokenService;
+        clientDataJsonValidator = ClientDataJsonValidator.builder()
+                .operation(ClientDataJsonValidator.CDJType.WEBAUTHN_GET)
+                .origin(webAuthnProperties.getOrigin())
+                .build();
     }
 
     @Override
@@ -82,15 +87,17 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
     public SuccessfulAuthenticationResponse authenticationUserHandlePost(String userHandle,
                                                                          AuthenticationRequest authenticationRequest) {
         String clientDataJson = authenticationRequest.getClientDataJson();
-        ClientDataJson clientDataJsonObj = readClientDataJson(clientDataJson);
-        validateClientDataJson(clientDataJsonObj);
+        ClientDataJson clientDataJsonObj = ClientDataJsonReader.read(clientDataJson);
         Optional<String> cacheChallenge = cacheService.get(getCacheKey(userHandle));
-        if (cacheChallenge.isPresent() && cacheChallenge.get().equals(clientDataJsonObj.getChallenge())) {
+        if (cacheChallenge.isPresent()) {
+            clientDataJsonValidator.validate(clientDataJsonObj, cacheChallenge.get());
+
             String authenticatorData = authenticationRequest.getAuthenticatorData();
             AuthenticatorData authData = AuthenticatorDataReader.read(authenticatorData.getBytes());
             byte[] credentialIdBytes = authData.getAttestedCredentialData().getCredentialId();
             String credentialId = Base64.encodeBase64URLSafeString(credentialIdBytes);
             Optional<Credential> optionalCredential = webauthnDataService.findById(credentialId);
+
             if (optionalCredential.isPresent()) {
                 AuthenticatorAssertionResponse assertionResponse = AuthenticatorAssertionResponse.builder()
                         .base64Signature(authenticationRequest.getSignature())
@@ -124,31 +131,4 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
         return userHandle + "_challenge";
     }
 
-    private void validateClientDataJson(ClientDataJson clientDataJson) {
-        if (!StringUtils.equals(clientDataJson.getOrigin(), "https://" + webAuthnProperties.getRpId())) {
-            throw new InvalidRequestException(ErrorDescriptions.INVALID_ORIGIN);
-        }
-        if (!StringUtils.equals(clientDataJson.getType(), "webauthn.get")) {
-            throw new InvalidRequestException(ErrorDescriptions.INVALID_CDJ_TYPE);
-        }
-    }
-
-    private static ClientDataJson readClientDataJson(String clientDataJson) {
-        ClientDataJson clientDataJsonObject;
-        if (StringUtils.isBlank(clientDataJson)) {
-            throw new InvalidRequestException(ErrorDescriptions.INVALID_VALUE_FOR_CLIENT_DATA_JSON);
-        }
-        try {
-            String decodedClientDataJson = new String(Base64.decodeBase64(clientDataJson));
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                clientDataJsonObject = mapper.readValue(decodedClientDataJson, ClientDataJson.class);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        } catch (Exception e) {
-            throw new InvalidRequestException(ErrorDescriptions.INVALID_VALUE_FOR_CLIENT_DATA_JSON);
-        }
-        return clientDataJsonObject;
-    }
 }

@@ -48,7 +48,7 @@ public class AuthenticationTests {
     private WebauthnDataService webauthnDataService;
 
     @Nested
-    @DisplayName("Credential Creation Options Tests")
+    @DisplayName("Credential AuthN Options Tests")
     class CredentialAuthenticationOptionsTests {
 
         @Test
@@ -115,6 +115,37 @@ public class AuthenticationTests {
             assertTrue(cacheChallenge.isPresent());
             assertEquals(UUID.fromString(cacheChallenge.get()).toString(), optionsResponse.getChallenge(),
                     "UUID Challenge must be same as present in cache.");
+        }
+    }
+
+    @Nested
+    @DisplayName("Credential AuthN Tests")
+    class CredentialAuthenticationTests {
+        @Test
+        @DisplayName("On Authentication Request, Previously Registered Credential Id must be present. ")
+        void authenticationGetMustReturnRegisteredCredentials() {
+            //given
+            PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
+            String userHandle = creationOptionsResponse.getUserId();
+            String attestationObject = CommonUtils.getValidAttestationObjectString();
+            String webauthnId = AttestationObjectReader.read(attestationObject).getWebauthnId();
+            RegistrationRequest request = new RegistrationRequest();
+            request.setAttestationObject(attestationObject.trim());
+            request.setClientDataJson(CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getRpId()));
+            request.setUserHandle(userHandle);
+            registrationApi.registrationPost(request);
+
+            //when
+            PublicKeyCredentialRequestOptionsResponse authOptions =
+                    authenticationApi.authenticationUserHandleGet(userHandle);
+
+            //then
+            assertFalse(CollectionUtils.isEmpty(authOptions.getAllowedCredentials()), "Credentials list must not be empty.");
+            assertEquals(1, authOptions.getAllowedCredentials().size(), "Registered credentials size must match.");
+            assertEquals(webauthnId, authOptions.getAllowedCredentials().get(0).getId(), "Registered credential must match");
+            assertEquals("public-key", authOptions.getAllowedCredentials().get(0).getType(), "Cred Type must match.");
+            assertEquals("preferred", authOptions.getUserVerification());
+            assertEquals(webauthnProperties.getRpId(), authOptions.getRpId());
         }
     }
 
