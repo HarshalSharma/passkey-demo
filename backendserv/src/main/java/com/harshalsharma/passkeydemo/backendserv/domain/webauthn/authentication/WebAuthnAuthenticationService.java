@@ -15,6 +15,7 @@ import com.harshalsharma.webauthncommons.attestationObject.parsers.Authenticator
 import com.harshalsharma.webauthncommons.authentication.SignatureVerifier;
 import com.harshalsharma.webauthncommons.clientdatajson.ClientDataJsonReader;
 import com.harshalsharma.webauthncommons.clientdatajson.ClientDataJsonValidator;
+import com.harshalsharma.webauthncommons.clientdatajson.InvalidClientDataJsonException;
 import com.harshalsharma.webauthncommons.entities.AuthenticatorAssertionResponse;
 import com.harshalsharma.webauthncommons.entities.AuthenticatorData;
 import com.harshalsharma.webauthncommons.entities.ClientDataJson;
@@ -74,6 +75,47 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
         return optionsResponse;
     }
 
+    @Override
+    public SuccessfulAuthenticationResponse authenticationUserHandlePost(String userHandle,
+                                                                         AuthenticationRequest authenticationRequest) {
+        //validate challenge.
+        Optional<String> cacheChallenge = cacheService.get(getCacheKey(userHandle));
+        if (cacheChallenge.isEmpty()) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_CHALLENGE);
+        }
+
+        String clientDataJson = authenticationRequest.getClientDataJson();
+        validateClientDataJson(clientDataJson, cacheChallenge.get());
+
+        //validate credential
+        Optional<Credential> optionalCredential = getCredential(authenticationRequest);
+        if (optionalCredential.isEmpty()) {
+            throw new InvalidRequestException(ErrorDescriptions.NO_CREDENTIALS_FOUND);
+        }
+
+        //validate signature
+        boolean isSignatureValid = isSignatureValid(authenticationRequest,
+                optionalCredential.get(), cacheChallenge.get());
+
+        if (!isSignatureValid) {
+            throw new InvalidRequestException(ErrorDescriptions.NOT_ALLOWED);
+        }
+
+        //grant token
+        SuccessfulAuthenticationResponse successResponse = new SuccessfulAuthenticationResponse();
+        successResponse.setAccessToken(tokenService.createToken(userHandle));
+        return successResponse;
+    }
+
+    private void validateClientDataJson(String clientDataJson, String cacheChallenge) {
+        try {
+            ClientDataJson clientDataJsonObj = ClientDataJsonReader.read(clientDataJson);
+            clientDataJsonValidator.validate(clientDataJsonObj, cacheChallenge);
+        } catch (InvalidClientDataJsonException e) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_CLIENT_DATA_JSON, e);
+        }
+    }
+
     private List<AllowedCredential> getAllowedCreds(List<Credential> credentials) {
         return credentials.stream().map(cred -> {
             AllowedCredential allowedCredential = new AllowedCredential();
@@ -83,47 +125,26 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
         }).collect(Collectors.toList());
     }
 
-    @Override
-    public SuccessfulAuthenticationResponse authenticationUserHandlePost(String userHandle,
-                                                                         AuthenticationRequest authenticationRequest) {
-        String clientDataJson = authenticationRequest.getClientDataJson();
-        ClientDataJson clientDataJsonObj = ClientDataJsonReader.read(clientDataJson);
-        Optional<String> cacheChallenge = cacheService.get(getCacheKey(userHandle));
-        if (cacheChallenge.isPresent()) {
-            clientDataJsonValidator.validate(clientDataJsonObj, cacheChallenge.get());
+    private Optional<Credential> getCredential(AuthenticationRequest authenticationRequest) {
+        String authenticatorData = authenticationRequest.getAuthenticatorData();
+        AuthenticatorData authData = AuthenticatorDataReader.read(authenticatorData.getBytes());
+        byte[] credentialIdBytes = authData.getAttestedCredentialData().getCredentialId();
+        String credentialId = Base64.encodeBase64URLSafeString(credentialIdBytes);
+        return webauthnDataService.findById(credentialId);
+    }
 
-            String authenticatorData = authenticationRequest.getAuthenticatorData();
-            AuthenticatorData authData = AuthenticatorDataReader.read(authenticatorData.getBytes());
-            byte[] credentialIdBytes = authData.getAttestedCredentialData().getCredentialId();
-            String credentialId = Base64.encodeBase64URLSafeString(credentialIdBytes);
-            Optional<Credential> optionalCredential = webauthnDataService.findById(credentialId);
-
-            if (optionalCredential.isPresent()) {
-                AuthenticatorAssertionResponse assertionResponse = AuthenticatorAssertionResponse.builder()
-                        .base64Signature(authenticationRequest.getSignature())
-                        .base64AuthenticatorData(authenticationRequest.getAuthenticatorData())
-                        .base64UserHandle(Base64.encodeBase64String(userHandle.getBytes()))
-                        .base64ClientDataJson(clientDataJson)
-                        .build();
-                Credential credential = optionalCredential.get();
-                PublicKeyCredential publicKey = PublicKeyCredential.builder()
-                        .keyType(credential.getPublicKeyType())
-                        .encodedKeySpec(credential.getPublicKey())
-                        .build();
-                boolean isSignatureValid = SignatureVerifier.verifySignature(assertionResponse, cacheChallenge.get(), publicKey);
-                if (isSignatureValid) {
-                    SuccessfulAuthenticationResponse successResponse = new SuccessfulAuthenticationResponse();
-                    successResponse.setAccessToken(tokenService.createToken(userHandle));
-                    return successResponse;
-                } else {
-                    throw new InvalidRequestException("Not Allowed");
-                }
-            } else {
-                throw new InvalidRequestException("No Matching Credential Found to verify this request.");
-            }
-        } else {
-            throw new InvalidRequestException(ErrorDescriptions.INVALID_CHALLENGE);
-        }
+    private static boolean isSignatureValid(AuthenticationRequest authenticationRequest,
+                                            Credential credential, String cacheChallenge) {
+        AuthenticatorAssertionResponse assertionResponse = AuthenticatorAssertionResponse.builder()
+                .base64Signature(authenticationRequest.getSignature())
+                .base64AuthenticatorData(authenticationRequest.getAuthenticatorData())
+                .base64ClientDataJson(authenticationRequest.getClientDataJson())
+                .build();
+        PublicKeyCredential publicKey = PublicKeyCredential.builder()
+                .keyType(credential.getPublicKeyType())
+                .encodedKeySpec(credential.getPublicKey())
+                .build();
+        return SignatureVerifier.verifySignature(assertionResponse, cacheChallenge, publicKey);
     }
 
     @NotNull

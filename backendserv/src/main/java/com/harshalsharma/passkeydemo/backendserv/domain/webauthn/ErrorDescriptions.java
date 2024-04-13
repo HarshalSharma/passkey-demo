@@ -5,9 +5,7 @@ public class ErrorDescriptions {
     public static final String INVALID_USER_HANDLE = "Invalid User-Handle.";
     public static final String INVALID_CHALLENGE = "Invalid Challenge.";
     public static final String INVALID_ATTESTATION_OBJECT = "Invalid Attestation Object.";
-    public static final String INVALID_VALUE_FOR_CLIENT_DATA_JSON = "Invalid value for ClientDataJson.";
-    public static final String INVALID_ORIGIN = "Invalid Origin.";
-
-    public static final String INVALID_CDJ_TYPE = "Invalid Operation Type.";
+    public static final String INVALID_CLIENT_DATA_JSON = "Invalid Client Data Json.";
     public static final String NO_CREDENTIALS_FOUND = "Not Registered.";
+    public static final String NOT_ALLOWED = "Not Allowed";
 }

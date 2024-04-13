@@ -3,9 +3,7 @@ package com.harshalsharma.passkeydemo.backendserv;
 import com.harshalsharma.passkeydemo.apispec.api.AuthenticationApi;
 import com.harshalsharma.passkeydemo.apispec.api.RegistrationApi;
 import com.harshalsharma.passkeydemo.apispec.model.Error;
-import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialCreationOptionsResponse;
-import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialRequestOptionsResponse;
-import com.harshalsharma.passkeydemo.apispec.model.RegistrationRequest;
+import com.harshalsharma.passkeydemo.apispec.model.*;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.ErrorDescriptions;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
@@ -14,6 +12,7 @@ import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Creden
 import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
 import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectReader;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,6 @@ import static org.junit.jupiter.api.Assertions.*;
         properties = "spring.datasource.url=jdbc:h2:mem:testdb")
 public class AuthenticationTests {
 
-    public static final String WEBAUTHN_AUTHENTICATE_TYPE = "webauthn.get";
     @Autowired
     private AuthenticationApi authenticationApi;
     @Autowired
@@ -80,7 +78,7 @@ public class AuthenticationTests {
             String webauthnId = AttestationObjectReader.read(attestationObject).getWebauthnId();
             RegistrationRequest request = new RegistrationRequest();
             request.setAttestationObject(attestationObject.trim());
-            request.setClientDataJson(CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getRpId()));
+            request.setClientDataJson(CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getOrigin()));
             request.setUserHandle(userHandle);
             registrationApi.registrationPost(request);
 
@@ -121,31 +119,67 @@ public class AuthenticationTests {
     @Nested
     @DisplayName("Credential AuthN Tests")
     class CredentialAuthenticationTests {
-        @Test
-        @DisplayName("On Authentication Request, Previously Registered Credential Id must be present. ")
-        void authenticationGetMustReturnRegisteredCredentials() {
-            //given
+
+        private String userHandle;
+
+        @BeforeEach
+        void setup() {
             PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
-            String userHandle = creationOptionsResponse.getUserId();
+            userHandle = creationOptionsResponse.getUserId();
             String attestationObject = CommonUtils.getValidAttestationObjectString();
-            String webauthnId = AttestationObjectReader.read(attestationObject).getWebauthnId();
+            String clientDataJson = CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getOrigin());
             RegistrationRequest request = new RegistrationRequest();
             request.setAttestationObject(attestationObject.trim());
-            request.setClientDataJson(CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getRpId()));
+            request.setClientDataJson(clientDataJson);
             request.setUserHandle(userHandle);
             registrationApi.registrationPost(request);
+        }
 
-            //when
-            PublicKeyCredentialRequestOptionsResponse authOptions =
-                    authenticationApi.authenticationUserHandleGet(userHandle);
+        @Test
+        @DisplayName("When Pre-Login challenge is not available in cache, any login call is invalid without it.")
+        void challengeMustBeValid() {
+            //given
+            String userHandle = this.userHandle;
+            String clientDataJson = CommonUtils.createClientDataJson(RandomStringUtils.randomAlphanumeric(5),
+                    webauthnProperties.getOrigin(), CommonUtils.WEBAUTHN_GET_TYPE);
 
-            //then
-            assertFalse(CollectionUtils.isEmpty(authOptions.getAllowedCredentials()), "Credentials list must not be empty.");
-            assertEquals(1, authOptions.getAllowedCredentials().size(), "Registered credentials size must match.");
-            assertEquals(webauthnId, authOptions.getAllowedCredentials().get(0).getId(), "Registered credential must match");
-            assertEquals("public-key", authOptions.getAllowedCredentials().get(0).getType(), "Cred Type must match.");
-            assertEquals("preferred", authOptions.getUserVerification());
-            assertEquals(webauthnProperties.getRpId(), authOptions.getRpId());
+            try {
+                //when
+                AuthenticationRequest request = new AuthenticationRequest();
+                request.setClientDataJson(clientDataJson);
+                authenticationApi.authenticationUserHandlePost(userHandle, request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Error entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                assertEquals(ErrorDescriptions.INVALID_CHALLENGE, entity.getDescription());
+            }
+        }
+
+        @Test
+        @DisplayName("During login, client data json type must be webauthn.get")
+        void webauthnTypeMustBeValid() {
+            //given
+            String userHandle = this.userHandle;
+            PublicKeyCredentialRequestOptionsResponse optionsResponse = authenticationApi.authenticationUserHandleGet(userHandle);
+            String clientDataJson = CommonUtils.createClientDataJson(optionsResponse.getChallenge(),
+                    webauthnProperties.getOrigin(), RandomStringUtils.randomAlphanumeric(5));
+
+            try {
+                //when
+                AuthenticationRequest request = new AuthenticationRequest();
+                request.setClientDataJson(clientDataJson);
+                authenticationApi.authenticationUserHandlePost(userHandle, request);
+                fail("exception expected above");
+            } catch (InvalidRequestException e) {
+                //then
+                assertEquals(400, e.getStatus());
+                Error entity = e.getError();
+                assertInstanceOf(Error.class, entity);
+                assertEquals(ErrorDescriptions.INVALID_CLIENT_DATA_JSON, entity.getDescription());
+            }
         }
     }
 

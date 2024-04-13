@@ -10,11 +10,6 @@ public class CommonUtils {
     public static final String WEBAUTHN_GET_TYPE = "webauthn.get";
 
     @NotNull
-    public static String createValidOrigin(String rpId) {
-        return "https://" + rpId;
-    }
-
-    @NotNull
     public static String getValidAttestationObjectString() {
         return """
                 o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVikt8DGRTBfls-BhOH2QC404lvdhe_t2_NkvM0n
@@ -23,9 +18,8 @@ public class CommonUtils {
                 """;
     }
 
-    public static String createClientDataJson(PublicKeyCredentialCreationOptionsResponse creationOptionsResponse, String rpId) {
+    public static String createClientDataJson(PublicKeyCredentialCreationOptionsResponse creationOptionsResponse, String origin) {
         String challenge = creationOptionsResponse.getChallenge();
-        String origin = createValidOrigin(rpId);
         return createClientDataJson(challenge, origin, WEBAUTHN_CREATE_TYPE);
     }
 
