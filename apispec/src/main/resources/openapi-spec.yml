@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: APIs for WebAuthn registration and authentication for users, along with simple Notes API for demonstration, This work is done by Harshal Sharma student of Bits Pilani for his disseration - 2022mt93080
 servers:
-  - url: http://localhost:9443/api
+  - url: http://localhost:8080
 paths:
   /registration:
     get:
@@ -180,6 +180,9 @@ components:
     AuthenticationRequest:
       type: object
       properties:
+        credential_id:
+          type: string
+          description: Base64 encoded Credential Id.
         authenticator_data:
           type: string
           description: Base64 encoded String.

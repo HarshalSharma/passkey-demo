@@ -11,8 +11,8 @@ import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnPropert
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Credential;
 import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
 import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectReader;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -120,26 +120,11 @@ public class AuthenticationTests {
     @DisplayName("Credential AuthN Tests")
     class CredentialAuthenticationTests {
 
-        private String userHandle;
-
-        @BeforeEach
-        void setup() {
-            PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
-            userHandle = creationOptionsResponse.getUserId();
-            String attestationObject = CommonUtils.getValidAttestationObjectString();
-            String clientDataJson = CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getOrigin());
-            RegistrationRequest request = new RegistrationRequest();
-            request.setAttestationObject(attestationObject.trim());
-            request.setClientDataJson(clientDataJson);
-            request.setUserHandle(userHandle);
-            registrationApi.registrationPost(request);
-        }
-
         @Test
         @DisplayName("When Pre-Login challenge is not available in cache, any login call is invalid without it.")
         void challengeMustBeValid() {
             //given
-            String userHandle = this.userHandle;
+            String userHandle = createRandomRegistration();
             String clientDataJson = CommonUtils.createClientDataJson(RandomStringUtils.randomAlphanumeric(5),
                     webauthnProperties.getOrigin(), CommonUtils.WEBAUTHN_GET_TYPE);
 
@@ -162,7 +147,7 @@ public class AuthenticationTests {
         @DisplayName("During login, client data json type must be webauthn.get")
         void webauthnTypeMustBeValid() {
             //given
-            String userHandle = this.userHandle;
+            String userHandle = createRandomRegistration();
             PublicKeyCredentialRequestOptionsResponse optionsResponse = authenticationApi.authenticationUserHandleGet(userHandle);
             String clientDataJson = CommonUtils.createClientDataJson(optionsResponse.getChallenge(),
                     webauthnProperties.getOrigin(), RandomStringUtils.randomAlphanumeric(5));
@@ -181,6 +166,32 @@ public class AuthenticationTests {
                 assertEquals(ErrorDescriptions.INVALID_CLIENT_DATA_JSON, entity.getDescription());
             }
         }
+
+        @Test
+        @DisplayName("On valid Request, Authentication must generate token.")
+        void testTokenIsGenerated() {
+            //given existing credential for user:
+            String userHandle = "ZGO0yp6G/apFbyZetyMtog==";
+            Credential credential = Credential.builder()
+                    .credentialId(Base64.encodeBase64URLSafeString(
+                            Base64.decodeBase64("DCkEcAIHZOuElhKEoaYMoiMABC0KzteoC4KilQIQNW0=")))
+                    .userId(userHandle)
+                    .publicKey("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEr8absn5ASvV/avoUdx0ND8j/EgAOx7oUzXU+Qc/fe4mTiEJXUIg/vYmIiy2nHKS7ZQGL8zKd9AdfMyRGNInBUA==")
+                    .publicKeyType("EC").build();
+            webauthnDataService.save(credential);
+
+            //when
+            cacheService.put(userHandle + "_challenge", Base64.encodeBase64("hello".getBytes()));
+            AuthenticationRequest request = new AuthenticationRequest();
+            request.setClientDataJson("eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYUdWc2JHOCIsIm9yaWdpbiI6Imh0dHBzOi8vaGFyc2hhbC1iaXRzLWZpbmFsLXByb2plY3Qud2ViLmFwcCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=");
+            request.setSignature("MEUCIDRJkyQFc4Zq5LDOzXhVHTvQNy9iIfUUCVfGxoWQ2GjHAiEAilgWwOeASLfJfrC3FB+u+2b2AFphBdnA+ZcQTCgt2kc=");
+            request.setAuthenticatorData("XplMM5wOtrEQZZaAkWy7bwddLei9qvVveK3GdtMrqk0FAAAAAA==");
+            SuccessfulAuthenticationResponse successfulAuthenticationResponse = authenticationApi.authenticationUserHandlePost(userHandle, request);
+
+            //then
+            assertNotNull(successfulAuthenticationResponse);
+            assertNotNull(successfulAuthenticationResponse.getAccessToken());
+        }
     }
 
     private Optional<String> getCacheChallenge(String userHandle) {
@@ -195,4 +206,16 @@ public class AuthenticationTests {
         webauthnDataService.save(testCred);
     }
 
+    private String createRandomRegistration() {
+        PublicKeyCredentialCreationOptionsResponse creationOptionsResponse = registrationApi.registrationGet();
+        String userHandle = creationOptionsResponse.getUserId();
+        String attestationObject = CommonUtils.getValidAttestationObjectString();
+        String clientDataJson = CommonUtils.createClientDataJson(creationOptionsResponse, webauthnProperties.getOrigin());
+        RegistrationRequest request = new RegistrationRequest();
+        request.setAttestationObject(attestationObject.trim());
+        request.setClientDataJson(clientDataJson);
+        request.setUserHandle(userHandle);
+        registrationApi.registrationPost(request);
+        return userHandle;
+    }
 }

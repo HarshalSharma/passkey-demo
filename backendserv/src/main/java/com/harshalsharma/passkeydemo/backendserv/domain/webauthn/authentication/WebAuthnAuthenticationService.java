@@ -19,6 +19,8 @@ import com.harshalsharma.webauthncommons.clientdatajson.InvalidClientDataJsonExc
 import com.harshalsharma.webauthncommons.entities.AuthenticatorAssertionResponse;
 import com.harshalsharma.webauthncommons.entities.AuthenticatorData;
 import com.harshalsharma.webauthncommons.entities.ClientDataJson;
+import com.harshalsharma.webauthncommons.io.DataEncoderDecoder;
+import com.harshalsharma.webauthncommons.io.MessageUtils;
 import com.harshalsharma.webauthncommons.publickey.PublicKeyCredential;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
@@ -26,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -86,6 +89,27 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
 
         String clientDataJson = authenticationRequest.getClientDataJson();
         validateClientDataJson(clientDataJson, cacheChallenge.get());
+
+        AuthenticatorData authenticatorData = AuthenticatorDataReader
+                .read(DataEncoderDecoder.decodeBase64Bytes(authenticationRequest.getAuthenticatorData()));
+
+        Arrays.equals(MessageUtils.hashSHA256(webAuthnProperties.getRpId().getBytes()), authenticatorData.getRpIdHash());
+//        System.out.println("RP_ID_HASH_COMPARION" + equals);
+
+        byte flags = authenticatorData.getFlags();
+        /**
+         * Bit 0, User Presence (UP): If set (i.e., to 1), the authenticator validated that the user was present through some Test of User Presence (TUP), such as touching a button on the authenticator.
+         * Bit 2, User Verification (UV): If set, the authenticator verified the actual user through a biometric, PIN, or other method.
+         */
+        int BIT_USER_PRESENCE = 1;
+        int BIT_USER_VERIFICATION = 1 << 2;
+        if ((flags & BIT_USER_PRESENCE) != 0) {
+            System.out.println("UP BIT IS SET");
+        } else if ((flags & BIT_USER_VERIFICATION) != 0) {
+            System.out.println("UV BIT IS SET");
+        } else {
+            System.out.println("NO UV OR UP BIT IS SET");
+        }
 
         //validate credential
         Optional<Credential> optionalCredential = getCredential(authenticationRequest);
