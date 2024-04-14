@@ -172,9 +172,10 @@ public class AuthenticationTests {
         void testTokenIsGenerated() {
             //given existing credential for user:
             String userHandle = "ZGO0yp6G/apFbyZetyMtog==";
+            String credentialId = Base64.encodeBase64URLSafeString(
+                    Base64.decodeBase64("DCkEcAIHZOuElhKEoaYMoiMABC0KzteoC4KilQIQNW0="));
             Credential credential = Credential.builder()
-                    .credentialId(Base64.encodeBase64URLSafeString(
-                            Base64.decodeBase64("DCkEcAIHZOuElhKEoaYMoiMABC0KzteoC4KilQIQNW0=")))
+                    .credentialId(credentialId)
                     .userId(userHandle)
                     .publicKey("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEr8absn5ASvV/avoUdx0ND8j/EgAOx7oUzXU+Qc/fe4mTiEJXUIg/vYmIiy2nHKS7ZQGL8zKd9AdfMyRGNInBUA==")
                     .publicKeyType("EC").build();
@@ -186,6 +187,7 @@ public class AuthenticationTests {
             request.setClientDataJson("eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYUdWc2JHOCIsIm9yaWdpbiI6Imh0dHBzOi8vaGFyc2hhbC1iaXRzLWZpbmFsLXByb2plY3Qud2ViLmFwcCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=");
             request.setSignature("MEUCIDRJkyQFc4Zq5LDOzXhVHTvQNy9iIfUUCVfGxoWQ2GjHAiEAilgWwOeASLfJfrC3FB+u+2b2AFphBdnA+ZcQTCgt2kc=");
             request.setAuthenticatorData("XplMM5wOtrEQZZaAkWy7bwddLei9qvVveK3GdtMrqk0FAAAAAA==");
+            request.setCredentialId(credentialId);
             SuccessfulAuthenticationResponse successfulAuthenticationResponse = authenticationApi.authenticationUserHandlePost(userHandle, request);
 
             //then
