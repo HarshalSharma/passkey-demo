@@ -13,6 +13,7 @@ import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestExcept
 import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectReader;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -183,11 +184,7 @@ public class AuthenticationTests {
 
             //when
             cacheService.put(userHandle + "_challenge", Base64.encodeBase64("hello".getBytes()));
-            AuthenticationRequest request = new AuthenticationRequest();
-            request.setClientDataJson("eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYUdWc2JHOCIsIm9yaWdpbiI6Imh0dHBzOi8vaGFyc2hhbC1iaXRzLWZpbmFsLXByb2plY3Qud2ViLmFwcCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=");
-            request.setSignature("MEUCIDRJkyQFc4Zq5LDOzXhVHTvQNy9iIfUUCVfGxoWQ2GjHAiEAilgWwOeASLfJfrC3FB+u+2b2AFphBdnA+ZcQTCgt2kc=");
-            request.setAuthenticatorData("XplMM5wOtrEQZZaAkWy7bwddLei9qvVveK3GdtMrqk0FAAAAAA==");
-            request.setCredentialId(credentialId);
+            AuthenticationRequest request = CommonUtils.getValidAuthNRequest(credentialId);
             SuccessfulAuthenticationResponse successfulAuthenticationResponse = authenticationApi.authenticationUserHandlePost(userHandle, request);
 
             //then

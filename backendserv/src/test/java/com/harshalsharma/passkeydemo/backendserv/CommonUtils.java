@@ -1,5 +1,6 @@
 package com.harshalsharma.passkeydemo.backendserv;
 
+import com.harshalsharma.passkeydemo.apispec.model.AuthenticationRequest;
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialCreationOptionsResponse;
 import org.apache.commons.codec.binary.Base64;
 import org.jetbrains.annotations.NotNull;
@@ -29,4 +30,13 @@ public class CommonUtils {
         return Base64.encodeBase64String(clientDataJson.getBytes());
     }
 
+    @NotNull
+    public static AuthenticationRequest getValidAuthNRequest(String credentialId) {
+        AuthenticationRequest request = new AuthenticationRequest();
+        request.setClientDataJson("eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYUdWc2JHOCIsIm9yaWdpbiI6Imh0dHBzOi8vaGFyc2hhbC1iaXRzLWZpbmFsLXByb2plY3Qud2ViLmFwcCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=");
+        request.setSignature("MEUCIDRJkyQFc4Zq5LDOzXhVHTvQNy9iIfUUCVfGxoWQ2GjHAiEAilgWwOeASLfJfrC3FB+u+2b2AFphBdnA+ZcQTCgt2kc=");
+        request.setAuthenticatorData("XplMM5wOtrEQZZaAkWy7bwddLei9qvVveK3GdtMrqk0FAAAAAA==");
+        request.setCredentialId(credentialId);
+        return request;
+    }
 }
