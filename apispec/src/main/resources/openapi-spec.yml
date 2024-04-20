@@ -1,0 +1,281 @@
+openapi: 3.0.3
+info:
+  title: Webauthn Server Specification
+  version: 1.0.0
+  description: APIs for WebAuthn registration and authentication for users, along with simple Notes API for demonstration, This work is done by Harshal Sharma student of Bits Pilani for his disseration - 2022mt93080
+servers:
+  - url: http://localhost:8080
+paths:
+  /registration:
+    get:
+      summary: Creates PublicKeyCredentialOptions for webauthn Registration.
+      tags:
+        - WEBAUTHN
+      responses:
+        '200':
+          description: Creates PublicKeyCredentialCreationOptions for webauthn Registration, request must be followed by post registration to store the generated public key credentials very soon after this call.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyCredentialCreationOptionsResponse'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Bad request, the userhandle is not available or not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Store new webauthn-credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      tags:
+        - WEBAUTHN
+      responses:
+        '201':
+          description: Credentials stored successfully
+        '400':
+          description: Bad request or the user failed challenge verification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /authentication/{user_handle}:
+    get:
+      summary: Creates Public Key Credential Request Options.
+      parameters:
+        - name: user_handle
+          in: path
+          required: true
+          schema:
+            type: string
+      tags:
+        - WEBAUTHN
+      responses:
+        '200':
+          description: Created PublicKeyCredentialRequestRequestOptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyCredentialRequestOptionsResponse'
+        '404':
+          description: No credentials found for the given userhandle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Authenticates the user credential sigining request and grants a token.
+      parameters:
+        - name: user_handle
+          in: path
+          required: true
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+      tags:
+        - WEBAUTHN
+      responses:
+        '200':
+          description: User authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessfulAuthenticationResponse'
+        '404':
+          description: No credentials found for the given userhandle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notes:
+    get:
+      summary: Reads notes of logged in user.
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - NOTES
+      responses:
+        '200':
+          description: Get Notes of logged in user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleNote'
+        '403':
+          description: Not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No notes found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Updates notes of logged in user.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimpleNote'
+      tags:
+        - NOTES
+      responses:
+        '200':
+          description: Note updated
+        '404':
+          description: No credentials found for the given userhandle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: apiKey
+      name: Authorization
+      in: header
+  
+  schemas:
+    RegistrationRequest:
+      type: object
+      properties:
+        user_handle:
+          type: string
+          description: Server provided user handle
+        client_data_json:
+          type: string
+          description: Base64 encoded String.
+        attestation_object:
+          type: string
+          description: Base64 encoded String.
+
+    AuthenticationRequest:
+      type: object
+      properties:
+        credential_id:
+          type: string
+          description: Base64 encoded Credential Id.
+        authenticator_data:
+          type: string
+          description: Base64 encoded String.
+        client_data_json:
+          type: string
+          description: Base64 encoded String.
+        signature:
+          type: string
+          description: Base64 encoded String.
+    SuccessfulAuthenticationResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: bearer access token.
+    PublicKeyCredentialCreationOptionsResponse:
+      type: object
+      properties:
+        rp_id:
+          type: string
+          description: relying party to which this credential is tied.
+        rp_name:
+          type: string
+          description: relying party name to which this credential is tied.
+        user_id:
+          type: string
+          description: the user identifier or user handle
+        user_name:
+          type: string
+          description: name of the user.
+        display_name:
+          type: string
+          description: Name to be shown for this credential to the user.
+        challenge:
+          type: string
+          description: generated challenge string.
+        pub_key_cred_params:
+          type: array
+          description: public key credential parameters
+          items:
+            $ref: '#/components/schemas/PublicKeyCredentialParam'
+
+    PublicKeyCredentialParam:
+      type: object
+      properties:
+        type:
+          type: string
+          description: type of key. ex. public-key
+        alg:
+          type: number
+          description: algorithm to use.
+
+    PublicKeyCredentialRequestOptionsResponse:
+      type: object
+      properties:
+        challenge:
+          type: string
+          description: generated challenge string.
+        user_verification:
+          type: string
+          description: user verification type requested.
+        rp_id:
+          type: string
+          description: rpId to which this credential is tied.
+        allowed_credentials:
+          type: array
+          description: allowed credentials available with server to complete this request.
+          items:
+            $ref: '#/components/schemas/AllowedCredential'
+
+    AllowedCredential:
+      type: object
+      properties:
+        type:
+          type: string
+          description: type of credential.
+        id:
+          type: string
+          description: Base64 encoded credential id.
+
+    SimpleNote:
+      type: object
+      properties:
+        note:
+          type: string
+          description: A simple note.
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: name of the error.
+        description:
+          type: string
+          description: defines the reason for this error.
