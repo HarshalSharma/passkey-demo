@@ -3,9 +3,9 @@ package com.harshalsharma.passkeydemo.backendserv.config.filters;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.ext.Provider;
+import org.springframework.stereotype.Component;
 
-@Provider
+@Component
 public class CORSFilter implements ContainerResponseFilter {
 
     @Override

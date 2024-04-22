@@ -5,7 +5,9 @@ import com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import org.springframework.stereotype.Component;
 
+@Component
 public class GenericExceptionHandler implements ExceptionMapper<Exception> {
 
     @Override

@@ -5,14 +5,12 @@ import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestExcept
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.Provider;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
+import org.springframework.stereotype.Component;
 
-@PreMatching
-@Provider
+@Component
 public class AuthFilter implements ContainerRequestFilter {
 
     private final SimpleIdentityService identityService;
@@ -45,12 +43,18 @@ public class AuthFilter implements ContainerRequestFilter {
             requestContext.abortWith(Response.status(
                     Response.Status.UNAUTHORIZED).build());
         } else {
-            String[] tokens = xAuth.split(" ");
-            if (tokens.length == 1) {
-                token = tokens[0];
-            } else if (tokens.length == 2) {
-                token = tokens[1];
-            }
+            token = getTokenFromAuthHeader(xAuth);
+        }
+        return token;
+    }
+
+    private static String getTokenFromAuthHeader(String xAuth) {
+        String token = null;
+        String[] tokens = xAuth.split(" ");
+        if (tokens.length == 1) {
+            token = tokens[0];
+        } else if (tokens.length == 2) {
+            token = tokens[1];
         }
         return token;
     }

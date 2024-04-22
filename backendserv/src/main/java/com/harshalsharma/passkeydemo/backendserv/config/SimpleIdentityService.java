@@ -3,18 +3,15 @@ package com.harshalsharma.passkeydemo.backendserv.config;
 import com.harshalsharma.passkeydemo.backendserv.domain.notes.IdentityService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.authentication.TokenService;
 import jakarta.inject.Inject;
-import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.RequestScope;
 
 @Component
-@RequestScope
 public class SimpleIdentityService implements IdentityService {
 
     private final TokenService tokenService;
 
-    @Setter
-    private String authToken;
+    private static final ThreadLocal<String> authToken = new ThreadLocal<>();
 
     @Inject
     public SimpleIdentityService(TokenService tokenService) {
@@ -23,6 +20,14 @@ public class SimpleIdentityService implements IdentityService {
 
     @Override
     public String getCurrentUserId() {
-        return tokenService.getSecurityContext(authToken).getUserHandle();
+        String token = authToken.get();
+        if (StringUtils.isNotEmpty(token)) {
+            return tokenService.getSecurityContext(token).getUserHandle();
+        }
+        return null;
+    }
+
+    public void setAuthToken(String token) {
+        authToken.set(token);
     }
 }
