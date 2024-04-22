@@ -13,7 +13,6 @@ import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestExcept
 import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectReader;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -191,7 +190,9 @@ public class AuthenticationTests {
             assertNotNull(successfulAuthenticationResponse);
             assertNotNull(successfulAuthenticationResponse.getAccessToken());
         }
+
     }
+
 
     private Optional<String> getCacheChallenge(String userHandle) {
         return cacheService.get(userHandle + "_challenge");
