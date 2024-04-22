@@ -10,6 +10,7 @@ public class InvalidRequestException extends RuntimeException implements Busines
     private final String description;
 
     public InvalidRequestException(String description) {
+        super(description);
         this.description = description;
     }
 

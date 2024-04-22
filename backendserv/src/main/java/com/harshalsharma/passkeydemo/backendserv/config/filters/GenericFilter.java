@@ -5,9 +5,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
-import org.springframework.stereotype.Component;
+import jakarta.ws.rs.ext.Provider;
 
-@Component
+@Provider
 public class GenericFilter implements ContainerResponseFilter {
 
     private final SimpleIdentityService identityService;

@@ -49,6 +49,9 @@ public class AutoAuthNTests {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    private static final Random random = new Random();
+
+
     @BeforeEach
     void setup() {
         if (StringUtils.isBlank(accessToken)) {
@@ -72,9 +75,8 @@ public class AutoAuthNTests {
     @Test()
     void testAutoAuthNReturnsValidCredential() {
         //given registered location.
-        Random random = new Random();
-        double latitude = random.nextDouble(100);
-        double longitude = random.nextDouble(100);
+        double latitude = generateRandomLatitude();
+        double longitude = generateRandomLongitude();
         updatePreferences(latitude, longitude);
 
         //when generate AuthN options for location
@@ -105,5 +107,15 @@ public class AutoAuthNTests {
         HttpEntity<Preferences> httpEntity = new HttpEntity<>(preferences, headers);
         ResponseEntity<String> postEntity = restTemplate.exchange(url, HttpMethod.PUT, httpEntity, String.class);
         Assertions.assertEquals(204, postEntity.getStatusCode().value());
+    }
+
+    // Method to generate random latitude between -90 and +90 degrees
+    private static double generateRandomLatitude() {
+        return -90.0 + (90.0 - (-90.0)) * random.nextDouble();
+    }
+
+    // Method to generate random longitude between -180 and +180 degrees
+    private static double generateRandomLongitude() {
+        return -180.0 + (180.0 - (-180.0)) * random.nextDouble();
     }
 }

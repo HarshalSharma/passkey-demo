@@ -39,11 +39,20 @@ public class WebauthnDataServiceImpl implements WebauthnDataService {
 
     @Override
     public List<Credential> findByLocation(double latitude, double longitude, double radius) {
-        double minLat = latitude - (radius / 111.12);
-        double maxLat = latitude + (radius / 111.12);
-        double minLong = longitude - (radius / (111.12 * Math.cos(latitude)));
-        double maxLong = longitude + (radius / (111.12 * Math.cos(latitude)));
-        List<Preference> prefs = preferenceRepository.findByLatitudeBetweenAndLongitudeBetween(minLat, maxLat, minLong, maxLong);
+        double earthRadius = 6371; // Earth's radius in kilometers (or miles, adjust accordingly)
+
+        double dLat = Math.toRadians(radius / earthRadius);
+        double dLon = Math.toRadians(radius / (earthRadius * Math.cos(Math.toRadians(latitude))));
+
+        double minLat = latitude - dLat;
+        double maxLat = latitude + dLat;
+
+        double minLong = longitude - dLon;
+        double maxLong = longitude + dLon;
+
+        List<Preference> prefs = preferenceRepository.findByLatitudeBetweenAndLongitudeBetween(
+                Math.max(minLat, -90),
+                Math.min(maxLat, 90), Math.max(minLong, -180), Math.min(maxLong, 180));
         if (CollectionUtils.isEmpty(prefs)) {
             return Collections.emptyList();
         }

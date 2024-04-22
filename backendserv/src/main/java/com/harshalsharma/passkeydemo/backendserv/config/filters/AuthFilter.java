@@ -1,21 +1,19 @@
 package com.harshalsharma.passkeydemo.backendserv.config.filters;
 
 import com.harshalsharma.passkeydemo.backendserv.config.SimpleIdentityService;
-import com.harshalsharma.passkeydemo.backendserv.exceptions.UnauthorizedRequestException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
-import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
 @PreMatching
 @Provider
-@Component
 public class AuthFilter implements ContainerRequestFilter {
 
     private static final String[] GUARDED_PATHS = new String[]{"notes", "preferences"};
@@ -46,7 +44,8 @@ public class AuthFilter implements ContainerRequestFilter {
         String token = null;
         String xAuth = requestContext.getHeaderString("Authorization");
         if (StringUtils.isBlank(xAuth)) {
-            throw new UnauthorizedRequestException();
+            requestContext.abortWith(Response.status(
+                    Response.Status.UNAUTHORIZED).build());
         } else {
             token = getTokenFromAuthHeader(xAuth);
         }
