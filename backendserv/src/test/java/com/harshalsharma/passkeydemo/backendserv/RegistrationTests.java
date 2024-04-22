@@ -99,7 +99,7 @@ public class RegistrationTests {
         }
 
         @Test
-        @DisplayName("A randomly generated UUID is set as userId, username and display name is Passkey-Demo.")
+        @DisplayName("A randomly generated String is set as userId, username and display name is Passkey-Demo.")
         void testUserIdUserNameAndDisplayNameValue() {
             //given
             String defaultDisplayName = "PassKey-Demo";
@@ -111,8 +111,7 @@ public class RegistrationTests {
             String displayName = creationOptions.getDisplayName();
 
             //then
-            assertEquals(UUID.fromString(userId).toString(), userId,
-                    "UserId must be an valid UUID");
+            assertEquals(userId, userId, "UserId must match.");
             assertEquals(userId, userName, "By default username is same as userid");
             assertEquals(defaultDisplayName, displayName, "display name has the default value.");
         }

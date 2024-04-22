@@ -107,6 +107,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /auto-authentication:
+    get:
+      summary: Creates Public Key Credential Request Options By location.
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+      tags:
+        - WEBAUTHN
+      responses:
+        '200':
+          description: Created PublicKeyCredentialRequestRequestOptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKeyCredentialRequestOptionsResponse'
+        '404':
+          description: No credentials found for the given userhandle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /notes:
     get:
       summary: Reads notes of logged in user.
@@ -151,6 +183,49 @@ paths:
           description: Note updated
         '404':
           description: No credentials found for the given userhandle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /preferences:
+    get:
+      summary: Reads User preferences.
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - PREFERENCES
+      responses:
+        '200':
+          description: Get Preferences of logged in user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+        '403':
+          description: Not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Updates preferences of logged in user.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preferences'
+      tags:
+        - Preferences
+      responses:
+        '200':
+          description: Preferences updated
+        '400':
+          description: Invalid Request.
           content:
             application/json:
               schema:
@@ -269,6 +344,16 @@ components:
         note:
           type: string
           description: A simple note.
+
+    Preferences:
+      type: object
+      properties:
+        home_lat:
+          type: number
+          description: home latitude
+        home_log:
+          type: number
+          description: home longitude
 
     Error:
       type: object

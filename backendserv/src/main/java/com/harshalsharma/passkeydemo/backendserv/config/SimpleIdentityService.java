@@ -30,4 +30,8 @@ public class SimpleIdentityService implements IdentityService {
     public void setAuthToken(String token) {
         authToken.set(token);
     }
+
+    public void clearRequestAuthToken() {
+        authToken.remove();
+    }
 }

@@ -14,4 +14,12 @@ public interface WebauthnDataService {
 
     @Transactional
     void save(Credential credential);
+
+    /**
+     * @param latitude  latitude of location
+     * @param longitude longitude of location
+     * @param radius    number of Kms around
+     * @return credentials matching this area.
+     */
+    List<Credential> findByLocation(double latitude, double longitude, double radius);
 }

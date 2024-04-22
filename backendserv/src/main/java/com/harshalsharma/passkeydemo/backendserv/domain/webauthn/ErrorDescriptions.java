@@ -9,4 +9,5 @@ public class ErrorDescriptions {
     public static final String NO_CREDENTIALS_FOUND = "Not Registered.";
     public static final String NOT_ALLOWED = "Not Allowed";
     public static final String INVALID_ASSERTION = "Invalid Authentication Assertion.";
+    public static final String INVALID_LOCATION = "Invalid Location";
 }
