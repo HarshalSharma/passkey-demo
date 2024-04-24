@@ -27,8 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateRandomName;
-import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateUUIDString;
+import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.*;
 
 @Component
 public class WebAuthnRegistrationService implements RegistrationApi {
@@ -65,7 +64,7 @@ public class WebAuthnRegistrationService implements RegistrationApi {
 
         creationOptionsResponse.setPubKeyCredParams(publicKeyCredentialParams);
 
-        String challenge = generateUUIDString();
+        String challenge = generateChallenge();
         String userId = generateUniqueName();
 
         creationOptionsResponse.setUserId(userId);

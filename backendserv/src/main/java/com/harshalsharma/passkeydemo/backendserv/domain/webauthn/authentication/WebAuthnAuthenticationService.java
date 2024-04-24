@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateChallenge;
 import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateUUIDString;
 
 @Component
@@ -76,7 +77,7 @@ public class WebAuthnAuthenticationService implements AuthenticationApi, AutoAut
         optionsResponse.setAllowedCredentials(getAllowedCreds(credentials));
         optionsResponse.setUserVerification("preferred");
         optionsResponse.setRpId(webAuthnProperties.getRpId());
-        String challenge = generateUUIDString();
+        String challenge = generateChallenge();
         optionsResponse.setChallenge(challenge);
         cacheService.put(getCacheKey(userHandle), challenge);
         return optionsResponse;
@@ -100,7 +101,7 @@ public class WebAuthnAuthenticationService implements AuthenticationApi, AutoAut
         optionsResponse.setAllowedCredentials(getAllowedCreds(credentials));
         optionsResponse.setUserVerification("preferred");
         optionsResponse.setRpId(webAuthnProperties.getRpId());
-        String challenge = generateUUIDString();
+        String challenge = generateChallenge();
         optionsResponse.setChallenge(challenge);
 
         //adds same challenge for each possible user.
