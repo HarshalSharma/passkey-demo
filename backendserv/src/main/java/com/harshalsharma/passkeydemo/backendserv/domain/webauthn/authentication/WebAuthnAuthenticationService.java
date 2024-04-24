@@ -1,6 +1,7 @@
 package com.harshalsharma.passkeydemo.backendserv.domain.webauthn.authentication;
 
 import com.harshalsharma.passkeydemo.apispec.api.AuthenticationApi;
+import com.harshalsharma.passkeydemo.apispec.api.AutoAuthenticationApi;
 import com.harshalsharma.passkeydemo.apispec.model.AllowedCredential;
 import com.harshalsharma.passkeydemo.apispec.model.AuthenticationRequest;
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialRequestOptionsResponse;
@@ -28,12 +29,13 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateUUIDString;
 
 @Component
-public class WebAuthnAuthenticationService implements AuthenticationApi {
+public class WebAuthnAuthenticationService implements AuthenticationApi, AutoAuthenticationApi {
 
     private final WebauthnProperties webAuthnProperties;
 
@@ -81,6 +83,37 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
     }
 
     @Override
+    public PublicKeyCredentialRequestOptionsResponse autoAuthenticationGet(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            throw new InvalidRequestException(ErrorDescriptions.INVALID_LOCATION);
+        }
+        PublicKeyCredentialRequestOptionsResponse optionsResponse = new PublicKeyCredentialRequestOptionsResponse();
+        double radius = webAuthnProperties.getLocationSearchRadius();
+        List<Credential> credentials = webauthnDataService.findByLocation(latitude, longitude, radius);
+
+        if (CollectionUtils.isEmpty(credentials)) {
+            throw new InvalidRequestException(ErrorDescriptions.NO_CREDENTIALS_FOUND);
+        }
+
+        Set<String> possibleUserHandles = credentials.stream().map(Credential::getUserId).collect(Collectors.toSet());
+
+        optionsResponse.setAllowedCredentials(getAllowedCreds(credentials));
+        optionsResponse.setUserVerification("preferred");
+        optionsResponse.setRpId(webAuthnProperties.getRpId());
+        String challenge = generateUUIDString();
+        optionsResponse.setChallenge(challenge);
+
+        //adds same challenge for each possible user.
+        possibleUserHandles.forEach(userHandle -> {
+            if (cacheService.get(getCacheKey(userHandle)).isEmpty()) {
+                cacheService.put(getCacheKey(userHandle), challenge);
+            }
+        });
+
+        return optionsResponse;
+    }
+
+    @Override
     public SuccessfulAuthenticationResponse authenticationUserHandlePost(String userHandle,
                                                                          AuthenticationRequest authenticationRequest) {
         //validate challenge.
@@ -98,6 +131,8 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
         if (optionalCredential.isEmpty()) {
             throw new InvalidRequestException(ErrorDescriptions.NO_CREDENTIALS_FOUND);
         }
+
+        cacheService.remove(getCacheKey(userHandle));
 
         //validate signature
         boolean isSignatureValid = isSignatureValid(authenticationRequest,
@@ -169,5 +204,4 @@ public class WebAuthnAuthenticationService implements AuthenticationApi {
     private static String getCacheKey(String userHandle) {
         return userHandle + "_challenge";
     }
-
 }

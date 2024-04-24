@@ -12,9 +12,9 @@ import java.util.Optional;
 @Component
 public class NoteService implements NotesApi {
 
-    private NotesRepository notesRepository;
+    private final NotesRepository notesRepository;
 
-    private IdentityService identityService;
+    private final IdentityService identityService;
 
     @Inject
     public NoteService(NotesRepository notesRepository, IdentityService identityService) {

@@ -1,9 +1,10 @@
 package com.harshalsharma.passkeydemo.backendserv;
 
 import com.harshalsharma.passkeydemo.apispec.api.AuthenticationApi;
+import com.harshalsharma.passkeydemo.apispec.model.AllowedCredential;
 import com.harshalsharma.passkeydemo.apispec.model.AuthenticationRequest;
 import com.harshalsharma.passkeydemo.apispec.model.Preferences;
-import com.harshalsharma.passkeydemo.apispec.model.SimpleNote;
+import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialRequestOptionsResponse;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Credential;
@@ -19,6 +20,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.util.Random;
@@ -26,7 +28,7 @@ import java.util.Random;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "classpath:application.properties",
         properties = "spring.datasource.url=jdbc:h2:mem:testdb")
-public class SimpleTokenTests {
+public class AutoAuthNTests {
 
     @Autowired
     private AuthenticationApi authenticationApi;
@@ -39,18 +41,23 @@ public class SimpleTokenTests {
 
     private String accessToken;
 
+    private String credentialId;
+
     @LocalServerPort
     private int port;
 
     @Autowired
     private TestRestTemplate restTemplate;
 
+    private static final Random random = new Random();
+
+
     @BeforeEach
     void setup() {
         if (StringUtils.isBlank(accessToken)) {
             //given existing credential for user:
             String userHandle = "ZGO0yp6G/apFbyZetyMtog==";
-            String credentialId = Base64.encodeBase64URLSafeString(
+            credentialId = Base64.encodeBase64URLSafeString(
                     Base64.decodeBase64("DCkEcAIHZOuElhKEoaYMoiMABC0KzteoC4KilQIQNW0="));
             Credential credential = Credential.builder()
                     .credentialId(credentialId)
@@ -64,81 +71,51 @@ public class SimpleTokenTests {
         }
     }
 
-    @Test
-    @DisplayName("Without token, call is not allowed.")
-    void testWithoutTokenIsBad() {
-        //when
-        ResponseEntity<String> getNotes = this.restTemplate.getForEntity("http://localhost:" + port + "/notes", String.class);
+    @DisplayName("Auto-Authentication must return the credential when location is same.")
+    @Test()
+    void testAutoAuthNReturnsValidCredential() {
+        //given registered location.
+        double latitude = generateRandomLatitude();
+        double longitude = generateRandomLongitude();
+        updatePreferences(latitude, longitude);
 
-        //then
-        Assertions.assertEquals(401, getNotes.getStatusCode().value());
-    }
-
-    @Test
-    @DisplayName("With valid token, call is allowed")
-    void testWithTokenIsGood() {
-        //given
-        String url = "http://localhost:" + port + "/notes";
+        //when generate AuthN options for location
+        String url = "http://localhost:" + port + "/auto-authentication?latitude=" + latitude + "&longitude=" + longitude;
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
-        HttpEntity<String> httpEntity = new HttpEntity<>("", headers);
-
-        //when
-        ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, httpEntity, String.class);
+        HttpEntity<?> httpEntity = new HttpEntity<>(headers);
+        ResponseEntity<PublicKeyCredentialRequestOptionsResponse> getEntity = restTemplate.exchange(url, HttpMethod.GET, httpEntity, PublicKeyCredentialRequestOptionsResponse.class);
 
         //then
-        Assertions.assertEquals(200, responseEntity.getStatusCode().value());
-    }
-
-    @Test
-    @DisplayName("With valid token, updating note is allowed")
-    void testWithTokenUpdateNotesIsAllowed() {
-        //given
-        String url = "http://localhost:" + port + "/notes";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        SimpleNote note = new SimpleNote();
-        HttpEntity<SimpleNote> httpEntity = new HttpEntity<>(note, headers);
-
-        //when
-        ResponseEntity<String> postEntity = restTemplate.exchange(url, HttpMethod.PUT, httpEntity, String.class);
-        ResponseEntity<SimpleNote> getEntity = restTemplate.exchange(url, HttpMethod.GET, httpEntity, SimpleNote.class);
-
-        //then
-        Assertions.assertEquals(204, postEntity.getStatusCode().value());
         Assertions.assertEquals(200, getEntity.getStatusCode().value());
-        SimpleNote body = getEntity.getBody();
+        PublicKeyCredentialRequestOptionsResponse body = getEntity.getBody();
         Assertions.assertNotNull(body);
-        Assertions.assertEquals(note.getNote(), body.getNote());
+        Assertions.assertFalse(CollectionUtils.isEmpty(body.getAllowedCredentials()));
+        boolean result = body.getAllowedCredentials().stream()
+                .map(AllowedCredential::getId).anyMatch(id -> id.equals(credentialId));
+        Assertions.assertTrue(result);
     }
 
-    @Test
-    @DisplayName("With valid token, updating preference is allowed")
-    void testWithTokenUpdatePreferenceIsAllowed() {
-        //given
+    private void updatePreferences(double latitude, double longitude) {
         String url = "http://localhost:" + port + "/preferences";
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
         Preferences preferences = new Preferences();
-        Random random = new Random();
-        preferences.setHomeLat(BigDecimal.valueOf(random.nextDouble(100)));
-        preferences.setHomeLog(BigDecimal.valueOf(random.nextDouble(100)));
+        preferences.setHomeLat(BigDecimal.valueOf(latitude));
+        preferences.setHomeLog(BigDecimal.valueOf(longitude));
         HttpEntity<Preferences> httpEntity = new HttpEntity<>(preferences, headers);
-
-        //when
         ResponseEntity<String> postEntity = restTemplate.exchange(url, HttpMethod.PUT, httpEntity, String.class);
-        ResponseEntity<Preferences> getEntity = restTemplate.exchange(url, HttpMethod.GET, httpEntity, Preferences.class);
-
-        //then
         Assertions.assertEquals(204, postEntity.getStatusCode().value());
-        Assertions.assertEquals(200, getEntity.getStatusCode().value());
-        Preferences body = getEntity.getBody();
-        Assertions.assertNotNull(body);
-        Assertions.assertEquals(preferences.getHomeLat(), body.getHomeLat());
-        Assertions.assertEquals(preferences.getHomeLog(), body.getHomeLog());
     }
 
+    // Method to generate random latitude between -90 and +90 degrees
+    private static double generateRandomLatitude() {
+        return -90.0 + (90.0 - (-90.0)) * random.nextDouble();
+    }
 
+    // Method to generate random longitude between -180 and +180 degrees
+    private static double generateRandomLongitude() {
+        return -180.0 + (180.0 - (-180.0)) * random.nextDouble();
+    }
 }

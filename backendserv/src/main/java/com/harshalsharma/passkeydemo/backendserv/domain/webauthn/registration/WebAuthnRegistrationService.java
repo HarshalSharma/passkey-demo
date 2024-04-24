@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateRandomName;
 import static com.harshalsharma.passkeydemo.backendserv.domain.UniqueStringGenerator.generateUUIDString;
 
 @Component
@@ -65,7 +66,8 @@ public class WebAuthnRegistrationService implements RegistrationApi {
         creationOptionsResponse.setPubKeyCredParams(publicKeyCredentialParams);
 
         String challenge = generateUUIDString();
-        String userId = generateUUIDString();
+        String userId = generateUniqueName();
+
         creationOptionsResponse.setUserId(userId);
         creationOptionsResponse.setChallenge(challenge);
 
@@ -74,6 +76,16 @@ public class WebAuthnRegistrationService implements RegistrationApi {
         creationOptionsResponse.setDisplayName("PassKey-Demo");
         creationOptionsResponse.setUserName(userId);
         return creationOptionsResponse;
+    }
+
+    @NotNull
+    private String generateUniqueName() {
+        String userId = null;
+        do {
+            userId = generateRandomName();
+        }
+        while (webauthnDataService.findById(userId).isPresent());
+        return userId;
     }
 
     @Override

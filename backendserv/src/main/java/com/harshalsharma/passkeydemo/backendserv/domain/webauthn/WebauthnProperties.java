@@ -13,4 +13,6 @@ public interface WebauthnProperties {
     int getTokenTimeoutInMillis();
 
     String getOrigin();
+
+    double getLocationSearchRadius();
 }
