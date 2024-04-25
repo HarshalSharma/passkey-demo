@@ -5,6 +5,7 @@ import com.harshalsharma.passkeydemo.apispec.model.AuthenticationRequest;
 import com.harshalsharma.passkeydemo.apispec.model.Preferences;
 import com.harshalsharma.passkeydemo.apispec.model.SimpleNote;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
+import com.harshalsharma.passkeydemo.backendserv.domain.LocationPrecisionMapper;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Credential;
 import org.apache.commons.codec.binary.Base64;
@@ -136,8 +137,10 @@ public class SimpleTokenTests {
         Assertions.assertEquals(200, getEntity.getStatusCode().value());
         Preferences body = getEntity.getBody();
         Assertions.assertNotNull(body);
-        Assertions.assertEquals(preferences.getHomeLat(), body.getHomeLat());
-        Assertions.assertEquals(preferences.getHomeLog(), body.getHomeLog());
+        Assertions.assertEquals(LocationPrecisionMapper.mapLocation(preferences.getHomeLat().doubleValue()),
+                LocationPrecisionMapper.mapLocation(body.getHomeLat().doubleValue()));
+        Assertions.assertEquals(LocationPrecisionMapper.mapLocation(preferences.getHomeLog().doubleValue()),
+                LocationPrecisionMapper.mapLocation(body.getHomeLog().doubleValue()));
     }
 
 

@@ -107,6 +107,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /authentication:
+    post:
+      summary: Authenticates the user credential sigining request and grants a token.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+      tags:
+        - WEBAUTHN
+      responses:
+        '200':
+          description: User authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessfulAuthenticationResponse'
+        '404':
+          description: No credentials found for the given userhandle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /auto-authentication:
     get:
       summary: Creates Public Key Credential Request Options By location.

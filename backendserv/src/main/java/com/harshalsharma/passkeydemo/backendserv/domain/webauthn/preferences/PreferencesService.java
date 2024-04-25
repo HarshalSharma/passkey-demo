@@ -3,6 +3,7 @@ package com.harshalsharma.passkeydemo.backendserv.domain.webauthn.preferences;
 import com.harshalsharma.passkeydemo.apispec.api.PreferencesApi;
 import com.harshalsharma.passkeydemo.apispec.model.Preferences;
 import com.harshalsharma.passkeydemo.backendserv.data.repositories.PreferenceRepository;
+import com.harshalsharma.passkeydemo.backendserv.domain.LocationPrecisionMapper;
 import com.harshalsharma.passkeydemo.backendserv.domain.notes.IdentityService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.ErrorDescriptions;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Preference;
@@ -45,8 +46,8 @@ public class PreferencesService implements PreferencesApi {
             throw new InvalidRequestException(ErrorDescriptions.INVALID_LOCATION);
         }
         Preference preference = Preference.builder().userId(identityService.getCurrentUserId())
-                .latitude(preferences.getHomeLat().doubleValue())
-                .longitude(preferences.getHomeLog().doubleValue()).build();
+                .latitude(LocationPrecisionMapper.mapLocation(preferences.getHomeLat().doubleValue()))
+                .longitude(LocationPrecisionMapper.mapLocation(preferences.getHomeLog().doubleValue())).build();
         preferenceRepository.save(preference);
     }
 }

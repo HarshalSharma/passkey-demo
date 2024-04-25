@@ -7,6 +7,7 @@ import com.harshalsharma.passkeydemo.apispec.model.AuthenticationRequest;
 import com.harshalsharma.passkeydemo.apispec.model.PublicKeyCredentialRequestOptionsResponse;
 import com.harshalsharma.passkeydemo.apispec.model.SuccessfulAuthenticationResponse;
 import com.harshalsharma.passkeydemo.backendserv.data.cache.CacheService;
+import com.harshalsharma.passkeydemo.backendserv.domain.LocationPrecisionMapper;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.ErrorDescriptions;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnDataService;
 import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.WebauthnProperties;
@@ -90,7 +91,8 @@ public class WebAuthnAuthenticationService implements AuthenticationApi, AutoAut
         }
         PublicKeyCredentialRequestOptionsResponse optionsResponse = new PublicKeyCredentialRequestOptionsResponse();
         double radius = webAuthnProperties.getLocationSearchRadius();
-        List<Credential> credentials = webauthnDataService.findByLocation(latitude, longitude, radius);
+        List<Credential> credentials = webauthnDataService.findByLocation(LocationPrecisionMapper.mapLocation(latitude),
+                LocationPrecisionMapper.mapLocation(longitude), radius);
 
         if (CollectionUtils.isEmpty(credentials)) {
             throw new InvalidRequestException(ErrorDescriptions.NO_CREDENTIALS_FOUND);
@@ -112,6 +114,19 @@ public class WebAuthnAuthenticationService implements AuthenticationApi, AutoAut
         });
 
         return optionsResponse;
+    }
+
+    @Override
+    public SuccessfulAuthenticationResponse authenticationPost(AuthenticationRequest authenticationRequest) {
+        //validate credential
+        Optional<Credential> optionalCredential = getCredential(authenticationRequest);
+        if (optionalCredential.isEmpty()) {
+            throw new InvalidRequestException(ErrorDescriptions.NO_CREDENTIALS_FOUND);
+        }
+
+        Credential credential = optionalCredential.get();
+        String userHandle = credential.getUserId();
+        return authenticationUserHandlePost(userHandle, authenticationRequest);
     }
 
     @Override
