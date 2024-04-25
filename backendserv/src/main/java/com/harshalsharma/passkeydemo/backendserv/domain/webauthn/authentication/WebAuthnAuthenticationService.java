@@ -160,6 +160,7 @@ public class WebAuthnAuthenticationService implements AuthenticationApi, AutoAut
 
         //grant token
         SuccessfulAuthenticationResponse successResponse = new SuccessfulAuthenticationResponse();
+        successResponse.setUserHandle(userHandle);
         successResponse.setAccessToken(tokenService.createToken(userHandle));
         return successResponse;
     }

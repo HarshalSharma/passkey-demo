@@ -296,6 +296,9 @@ components:
     SuccessfulAuthenticationResponse:
       type: object
       properties:
+        user_handle:
+          type: string
+          description: user handle of the logged in user.
         access_token:
           type: string
           description: bearer access token.
