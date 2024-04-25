@@ -13,6 +13,7 @@ import com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities.Creden
 import com.harshalsharma.passkeydemo.backendserv.exceptions.InvalidRequestException;
 import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectExplorer;
 import com.harshalsharma.webauthncommons.attestationObject.AttestationObjectReader;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -94,7 +95,8 @@ public class RegistrationTests {
 
             //then
             assertTrue(cacheChallenge.isPresent());
-            assertEquals(UUID.fromString(challenge).toString(), cacheChallenge.get(),
+            String uuidChallenge = UUID.fromString(new String(Base64.decodeBase64(cacheChallenge.get()))).toString();
+            assertEquals(uuidChallenge, new String(Base64.decodeBase64(challenge)),
                     "UUID Challenge must be same as present in cache.");
         }
 

@@ -97,7 +97,7 @@ public class AuthenticationTests {
 
 
         @Test
-        @DisplayName("A Challenge should be generated as an UUID and must also exist in cache.")
+        @DisplayName("A Challenge should be generated as Base64 encoded and must also exist in cache.")
         void challengeMustBeGeneratedAsUUIDInCacheAndShared() {
             //given
             String userHandle = RandomStringUtils.randomAlphanumeric(10);
@@ -111,7 +111,8 @@ public class AuthenticationTests {
             Optional<String> cacheChallenge = getCacheChallenge(userHandle);
             assertFalse(cacheChallengePreOptions.isPresent());
             assertTrue(cacheChallenge.isPresent());
-            assertEquals(UUID.fromString(cacheChallenge.get()).toString(), optionsResponse.getChallenge(),
+            String uuidChallenge = UUID.fromString(new String(Base64.decodeBase64(cacheChallenge.get()))).toString();
+            assertEquals(uuidChallenge, new String(Base64.decodeBase64(optionsResponse.getChallenge())),
                     "UUID Challenge must be same as present in cache.");
         }
     }
