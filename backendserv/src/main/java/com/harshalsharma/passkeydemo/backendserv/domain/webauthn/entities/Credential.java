@@ -3,6 +3,7 @@ package com.harshalsharma.passkeydemo.backendserv.domain.webauthn.entities;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import lombok.*;
+import org.hibernate.validator.constraints.Length;
 
 @Data
 @Builder
@@ -17,6 +18,7 @@ public class Credential {
 
     private String userId;
 
+    @Length(max = 2048)
     private String publicKey;
 
     private String publicKeyType;
